@@ -5,7 +5,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 ## Phase 1: Design (mockups, no app code)
 - [x] Areas map home screen (phone width, light + dark): list version mocked in `mockups/areas-map.html`, kept as the List view
 - [x] Choose the explorable map style from `mockups/index.html`: chose both (branching map home, journey road per goal)
-- [ ] Habits: where they show on the map and the road, and how to check in
+- [x] Habits: a "Today" strip under the map plus a Habits node in each area (mocked in `mockups/prototype.html`)
 - [ ] Target view: how the KES 100,000 total and the amounts logged per path show (paths, funding and the locked milestone are already mocked)
 - [ ] Add/edit flows: area, goal, milestone, task, habit, logging an amount
 - [ ] Settle look: colours, type, name and icon; write them into CLAUDE.md

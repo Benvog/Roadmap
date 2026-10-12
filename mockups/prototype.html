@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap Map Styles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Layout: one screen at a time (options, map, road), phone-first, a single green accent on tinted neutrals. */
+  :root {
+    --bg: #f4f6f4;
+    --surface: #ffffff;
+    --line: #d5dcd8;
+    --text: #15201c;
+    --muted: #55625c;
+    --accent: #0b7a5e;
+    --on-accent: #ffffff;
+    --accent-soft: #e2f1ec;
+    --track: #e3e8e5;
+    --shadow: 0 1px 2px rgba(21, 32, 28, .06), 0 6px 16px rgba(21, 32, 28, .06);
+    --font: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1312; --surface: #171d1b; --line: #2b3531; --text: #e9efec; --muted: #9daaa4;
+      --accent: #45d1a6; --on-accent: #0e1312; --accent-soft: #16302a; --track: #28312e; --shadow: none;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1312; --surface: #171d1b; --line: #2b3531; --text: #e9efec; --muted: #9daaa4;
+    --accent: #45d1a6; --on-accent: #0e1312; --accent-soft: #16302a; --track: #28312e; --shadow: none;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 500 15px/1.35 var(--font); -webkit-font-smoothing: antialiased;
+  }
+  body.lock { overflow: hidden; }
+  button { font: inherit; color: inherit; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  .icon-btn {
+    width: 44px; height: 44px; flex: none; display: grid; place-items: center;
+    border: 1px solid var(--line); border-radius: 12px;
+    background: var(--surface); color: var(--text); cursor: pointer;
+  }
+  .icon-btn svg { width: 20px; height: 20px; }
+  .bar { display: block; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+
+  .page { max-width: 460px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 60px; }
+  .page-head { display: flex; align-items: center; gap: 10px; }
+  .page-head .title { flex: 1; min-width: 0; }
+  .page-head h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+  .kicker { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+  /* Options */
+  .lede { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  .opt {
+    display: block; width: 100%; margin-top: 14px; padding: 16px; border-radius: 16px; text-align: left; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .opt .tag { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+  .opt b { display: block; margin-top: 2px; font-size: 17px; font-weight: 800; }
+  .opt span { display: block; margin-top: 4px; color: var(--muted); font-size: 13.5px; }
+  .foot { margin-top: 22px; color: var(--muted); font-size: 12.5px; }
+
+  /* Map */
+  #viewport {
+    position: fixed; inset: 0; overflow: hidden; touch-action: none; cursor: grab;
+    background-color: var(--bg);
+    background-image: radial-gradient(var(--line) 1.2px, transparent 1.2px);
+  }
+  #viewport.dragging { cursor: grabbing; }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #world.glide { transition: transform .35s ease; }
+  #edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
+  #edges path { fill: none; stroke: var(--line); stroke-width: 2; }
+  #edges path.done { stroke: var(--accent); }
+  #edges path.feeds { stroke: var(--accent); stroke-dasharray: 5 5; }
+  #edges path.arrow { fill: var(--accent); stroke: none; }
+
+  .node { position: absolute; transform: translate(-50%, -50%); cursor: pointer; }
+  .node.new { animation: pop .25s ease; }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.85); } }
+
+  .you {
+    width: 64px; height: 64px; border-radius: 50%; border: 0;
+    background: var(--accent); color: var(--on-accent); font-weight: 800;
+    box-shadow: 0 0 0 8px var(--accent-soft);
+  }
+  .area {
+    width: 92px; height: 92px; border-radius: 50%; border: 0; padding: 5px;
+    background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--track) 0);
+    box-shadow: var(--shadow);
+  }
+  .area .disc { display: grid; place-content: center; width: 100%; height: 100%; border-radius: 50%; background: var(--surface); }
+  .area b { font-size: 14.5px; font-weight: 800; }
+  .area small { color: var(--muted); font-size: 12px; }
+  .area.open { box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+  .goal {
+    width: 156px; padding: 9px 11px; border-radius: 14px; text-align: left;
+    background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .goal.open { border-color: var(--accent); }
+  .goal b { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.25; }
+  .goal small { display: block; margin-top: 2px; color: var(--muted); font-size: 11.5px; }
+  .goal .bar { margin-top: 6px; height: 5px; }
+  .step {
+    width: 156px; min-height: 44px; padding: 6px 10px 6px 8px; border-radius: 22px;
+    display: flex; gap: 8px; align-items: center; text-align: left;
+    background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; line-height: 1.25;
+  }
+  .step .ic { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; }
+  .step.done .ic { background: var(--accent); color: var(--on-accent); }
+  .step.next { border: 2px solid var(--accent); font-weight: 700; }
+  .step.next .ic { background: var(--accent-soft); color: var(--accent); }
+  .step.todo .ic { border: 1.5px solid var(--muted); }
+  .step.locked { background: var(--bg); border-style: dashed; color: var(--muted); }
+
+  .topbar {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 22px; pointer-events: none;
+    background: linear-gradient(var(--bg) 62%, transparent);
+  }
+  .topbar > * { pointer-events: auto; }
+  .topbar h1 { margin: 0 auto 0 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .habits {
+    width: 132px; padding: 8px 14px; border-radius: 22px; text-align: left;
+    background: var(--accent-soft); border: 1px solid var(--line);
+  }
+  .habits b { display: block; font-size: 13.5px; font-weight: 700; }
+  .habits small { display: block; color: var(--muted); font-size: 11.5px; }
+
+  /* Today's habits, always one tap away under the map */
+  .habit-strip {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)) 16px;
+    background: var(--surface); border-top: 1px solid var(--line);
+  }
+  .strip-label b { display: block; font-size: 13px; font-weight: 800; }
+  .strip-label small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .strip-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 3px 16px 3px 3px; }
+  .habit-chip {
+    flex: none; min-height: 44px; padding: 0 14px 0 8px; display: flex; align-items: center; gap: 8px;
+    border-radius: 999px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-size: 13px; font-weight: 700;
+  }
+  .habit-chip .ic { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--muted); color: transparent; }
+  .habit-chip small { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .habit-chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+  .habit-chip[aria-pressed="true"] .ic { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .streak { display: block; font-size: 12.5px; }
+
+  .hint {
+    position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 5;
+    max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 999px; text-align: center;
+    background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: 12.5px;
+    box-shadow: var(--shadow); transition: opacity .3s;
+  }
+  .hint.gone { opacity: 0; pointer-events: none; }
+  .zoom { position: fixed; right: 16px; bottom: calc(140px + env(safe-area-inset-bottom, 0px)); z-index: 10; display: grid; gap: 8px; }
+
+  /* Road */
+  .chips { display: flex; gap: 8px; margin: 14px -16px 0; padding: 2px 16px 6px; overflow-x: auto; scrollbar-width: none; }
+  .chips button {
+    flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); font-size: 13px; font-weight: 700; color: var(--muted);
+  }
+  .chips button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .progress { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+  .progress-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .progress-row b { font-weight: 800; }
+  .progress-row span { color: var(--muted); }
+  .progress .bar { margin-top: 8px; }
+
+  .road { position: relative; margin-top: 8px; }
+  .road > svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  .road > svg path { fill: none; stroke: var(--track); stroke-width: 14; stroke-linecap: round; }
+  .road > svg path.done { stroke: var(--accent); }
+  .road > svg path.dash { stroke: var(--surface); stroke-width: 2; stroke-dasharray: 2 12; }
+  .stop {
+    position: absolute; display: flex; align-items: center; gap: 12px;
+    padding: 0; border: 0; background: none; cursor: pointer; text-align: left; border-radius: 30px;
+  }
+  .stop.right { flex-direction: row-reverse; text-align: right; }
+  .stop .dot {
+    flex: none; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--surface); border: 3px solid var(--track); font-weight: 800; color: var(--muted);
+  }
+  .stop .dot svg { width: 22px; height: 22px; }
+  .stop.done .dot { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .stop.next .dot { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 7px var(--accent-soft); animation: here 2s ease-in-out infinite; }
+  .stop.locked .dot { background: var(--track); border-style: dashed; border-color: var(--muted); }
+  @keyframes here { 50% { box-shadow: 0 0 0 12px var(--accent-soft); } }
+  .stop b { display: block; font-size: 14.5px; font-weight: 700; line-height: 1.25; }
+  .stop small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+  .stop.next small { color: var(--accent); font-weight: 700; }
+  .finish { position: absolute; transform: translateX(-50%); text-align: center; width: 240px; }
+  .finish .dot {
+    width: 60px; height: 60px; margin: 0 auto 8px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--surface); border: 3px solid var(--track); color: var(--muted);
+  }
+  .finish.reached .dot { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .finish b { display: block; font-size: 14.5px; font-weight: 800; }
+  .finish small { color: var(--muted); font-size: 12.5px; }
+
+  /* Milestone sheet */
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    max-width: 460px; margin: 0 auto; max-height: 72%; overflow: auto;
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0;
+    background: var(--surface); border: 1px solid var(--line); border-bottom: 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, .18);
+  }
+  .sheet-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+  .sheet h2 { margin: 2px 0 0; font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+  .pill { display: inline-block; margin-top: 10px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--track); color: var(--text); }
+  .pill.next, .pill.done { background: var(--accent-soft); color: var(--accent); }
+  .sheet p { margin: 10px 0 0; font-size: 14px; }
+  .muted { color: var(--muted); }
+  .fund { margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .fund-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+  .fund-row b { font-weight: 800; }
+  .fund .bar { margin: 8px 0 6px; }
+  .fund ul { margin: 6px 0 0; padding: 0; list-style: none; font-size: 13.5px; }
+  .fund li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; color: var(--muted); }
+  .fund li b { color: var(--text); font-weight: 700; }
+  .tasks { margin: 12px 0 0; padding: 0; list-style: none; }
+  .tasks label { display: flex; gap: 10px; align-items: center; min-height: 44px; font-size: 14.5px; cursor: pointer; }
+  .tasks input { width: 20px; height: 20px; accent-color: var(--accent); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .btn { min-height: 44px; padding: 0 16px; border-radius: 12px; cursor: pointer; font-weight: 700; border: 1px solid var(--line); background: var(--surface); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .btn[disabled] { opacity: .55; cursor: not-allowed; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .node.new, .stop.next .dot { animation: none; }
+    #world.glide { transition: none; }
+  }
+</style>
+
+<div id="menu" class="page">
+  <div class="page-head">
+    <div class="title"><h1>Map style options</h1></div>
+    <button class="icon-btn theme-btn" type="button" aria-label="Switch between light and dark theme"></button>
+  </div>
+  <p class="lede">Three ways the roadmap could feel. Try each one, then pick.</p>
+  <button class="opt" type="button" data-open="map"><span class="tag">Option 1</span><b>Branching map</b>
+    <span>Drag and pinch a map. Tap an area, then a goal, to unfold its milestones in place.</span></button>
+  <button class="opt" type="button" data-open="road"><span class="tag">Option 2</span><b>Journey road</b>
+    <span>One goal at a time as a winding road of milestones.</span></button>
+  <button class="opt" type="button" data-open="both"><span class="tag">Option 3</span><b>Both</b>
+    <span>The branching map to explore. Tapping a goal opens its journey road.</span></button>
+  <p class="foot">Sample data. Nothing you tap here is saved, and it resets when the page reloads.</p>
+</div>
+
+<div id="mapview" hidden>
+  <div id="viewport">
+    <div id="world">
+      <svg id="edges" aria-hidden="true"></svg>
+      <div id="nodes"></div>
+    </div>
+  </div>
+  <div class="topbar">
+    <button class="icon-btn back-btn" type="button" data-open="menu" aria-label="Back to the options"></button>
+    <h1>Roadmap</h1>
+    <button class="icon-btn theme-btn" type="button" aria-label="Switch between light and dark theme"></button>
+  </div>
+  <div class="zoom">
+    <button class="icon-btn" id="zin" type="button" aria-label="Zoom in">+</button>
+    <button class="icon-btn" id="zout" type="button" aria-label="Zoom out">−</button>
+    <button class="icon-btn" id="home" type="button" aria-label="Back to the centre">◎</button>
+  </div>
+  <div class="hint" id="hint"></div>
+  <div class="habit-strip" id="strip" role="group" aria-label="Today's habits"></div>
+</div>
+
+<div id="roadview" class="page" hidden>
+  <div class="page-head">
+    <button class="icon-btn back-btn" id="road-back" type="button" aria-label="Back"></button>
+    <div class="title"><p class="kicker" id="kicker"></p><h1 id="road-title"></h1></div>
+    <button class="icon-btn theme-btn" type="button" aria-label="Switch between light and dark theme"></button>
+  </div>
+  <div class="chips" id="chips" role="group" aria-label="Goals"></div>
+  <div class="progress" id="progress"></div>
+  <div class="road" id="road"></div>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-labelledby="sheet-title" hidden></div>
+
+<script>
+// Sample data. Money and Career follow the plan; Health and Mental are placeholders.
+const DATA = [
+  { id: 'career', name: 'Career', dir: 'up', goals: [
+    { id: 'avenue', name: 'Find my focus avenue', steps: [
+      { t: 'List the avenues in my field', done: true },
+      { t: 'Shortlist 3 and research each', tasks: [
+        { t: 'Read 2 job posts for each avenue' }, { t: 'Note pay, demand and what I enjoy' }, { t: 'Rank the three' }] },
+      { t: 'Talk to 2 people in each' },
+      { t: 'Pick one, plan 90 days' }] }] },
+  { id: 'money', name: 'Money', dir: 'down', habits: [{ id: 'charts', name: 'Study the charts', streak: 4 }], goals: [
+    { id: '100k', name: 'Make KES 100,000', target: { of: 100000 }, paths: [
+      { id: 'remote', name: 'Remote work', earned: 12000, steps: [
+        { t: 'Pick a niche', done: true },
+        { t: 'Build profile & samples', done: true },
+        { t: 'Apply to 5 gigs a week', tasks: [
+          { t: 'Shortlist 5 gigs', done: true }, { t: 'Write the proposals' }, { t: 'Send and log them' }] },
+        { t: 'Land first client' },
+        { t: 'Earn KES 20,000 a month' }] },
+      { id: 'trading', name: 'Trading', earned: 0, steps: [
+        { t: 'Backtest 100 trades', tasks: [
+          { t: 'Trades 1 to 40', done: true }, { t: 'Trades 41 to 70' }, { t: 'Trades 71 to 100' }] },
+        { t: '30 days of chart study' },
+        { t: 'Deposit & go live', fund: { need: 20000, sources: [
+          { from: 'Remote work', amount: 8000 }, { from: 'Other cash: gift', amount: 4000 }] } },
+        { t: 'First profitable month' }] }] }] },
+  { id: 'health', name: 'Health', dir: 'right', habits: [
+    { id: 'workout', name: 'Workout', streak: 3, done: true }, { id: 'water', name: 'Drink 2 L of water', streak: 6 }], goals: [
+    { id: 'run', name: 'Run 5 km', steps: [
+      { t: 'Run 1 km without stopping', done: true },
+      { t: 'Run 3 km', tasks: [{ t: 'Three runs this week' }, { t: 'One long slow run' }] },
+      { t: 'Run 5 km' }] }] },
+  { id: 'mental', name: 'Mental', dir: 'left', habits: [{ id: 'journal', name: 'Journal 10 minutes', streak: 2 }], goals: [] },
+];
+
+const ICONS = {
+  check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  dot: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>',
+  flag: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V4M6 4h11l-2 4 2 4H6"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+};
+const $ = (id) => document.getElementById(id);
+document.querySelectorAll('.theme-btn').forEach((b) => (b.innerHTML = ICONS.moon));
+document.querySelectorAll('.back-btn').forEach((b) => (b.innerHTML = ICONS.back));
+
+const KES = (n) => 'KES ' + n.toLocaleString('en-KE');
+function allGoals() {
+  const out = [];
+  for (const area of DATA) for (const g of area.goals) {
+    if (g.steps) out.push({ goal: g, area, parent: null });
+    for (const p of g.paths || []) out.push({ goal: p, area, parent: g });
+  }
+  return out;
+}
+const stepsUnder = (goal) => (goal.steps || []).concat(...(goal.paths || []).map(stepsUnder));
+const percent = (steps) => (steps.length ? Math.round(100 * steps.filter((s) => s.done).length / steps.length) : 0);
+const funded = (step) => step.fund.sources.reduce((sum, s) => sum + s.amount, 0);
+function stepState(goal, i) {
+  const s = goal.steps[i];
+  if (s.done) return 'done';
+  if (s.fund && funded(s) < s.fund.need) return 'locked';
+  return goal.steps.findIndex((x) => !x.done) === i ? 'next' : 'todo';
+}
+const STATE_LABEL = { done: 'Done', next: 'Next step', todo: 'Coming up', locked: 'Locked' };
+function goalSub(goal) {
+  if (goal.target) return KES(goal.paths.reduce((sum, p) => sum + p.earned, 0)) + ' of ' + goal.target.of.toLocaleString('en-KE');
+  const text = goal.steps.filter((s) => s.done).length + ' of ' + goal.steps.length + ' done';
+  return goal.earned !== undefined ? text + ' · ' + KES(goal.earned) : text;
+}
+
+// ---------- Screens ----------
+let BOTH = false, current = 'menu', road = null, roadFromMap = false;
+function show(name) {
+  current = name;
+  closeSheet();
+  $('menu').hidden = name !== 'menu';
+  $('mapview').hidden = name !== 'map';
+  $('roadview').hidden = name !== 'road';
+  document.body.classList.toggle('lock', name === 'map');
+  scrollTo(0, 0);
+}
+const rerender = () => (current === 'map' ? renderMap() : renderRoad());
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.theme-btn')) {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    return;
+  }
+  const to = e.target.closest('[data-open]')?.dataset.open;
+  if (to === 'menu') show('menu');
+  if (to === 'map' || to === 'both') {
+    BOTH = to === 'both';
+    open.clear();
+    $('hint').textContent = BOTH ? 'Tap an area, then a goal to open its road' : 'Tap an area to explore · drag to move · pinch to zoom';
+    $('hint').classList.remove('gone');
+    show('map'); renderMap(); centre();
+  }
+  if (to === 'road') openRoad('remote', false);
+});
+
+// ---------- Milestone sheet ----------
+function openSheet(goal, i) {
+  const el = $('sheet'), s = goal.steps[i], state = stepState(goal, i);
+  habitsArea = null;
+  let body = `<span class="pill ${state}">${STATE_LABEL[state]}</span>`;
+  if (s.fund) {
+    const have = funded(s), left = Math.max(0, s.fund.need - have);
+    body += `<div class="fund">
+      <div class="fund-row"><b>${KES(have)}</b><span class="muted">of ${KES(s.fund.need)} to unlock</span></div>
+      <span class="bar"><i style="width:${Math.min(100, 100 * have / s.fund.need)}%"></i></span>
+      <ul>${s.fund.sources.map((x) => `<li><span>${x.from}</span><b>${KES(x.amount)}</b></li>`).join('')}</ul>
+    </div>
+    <p class="muted">${left ? KES(left) + ' to go. Money can come from any path or from cash you log.' : 'Fully funded. This milestone is unlocked.'}</p>`;
+  }
+  if (s.tasks) {
+    body += `<ul class="tasks">${s.tasks.map((t, n) =>
+      `<li><label><input type="checkbox" id="task-${n}" data-task="${n}" ${t.done || s.done ? 'checked' : ''}>${t.t}</label></li>`).join('')}</ul>`;
+  } else if (!s.fund) body += `<p class="muted">No tasks added to this milestone yet.</p>`;
+
+  let actions = '';
+  if (s.fund && state === 'locked') actions += `<button class="btn primary" data-act="log">Log KES 4,000 of other cash</button>`;
+  if (state === 'done') actions += `<button class="btn" data-act="undo">Mark as not done</button>`;
+  else if (state === 'locked') actions += `<button class="btn" disabled>Locked until funded</button>`;
+  else actions += `<button class="btn primary" data-act="done">Mark milestone done</button>`;
+
+  el.innerHTML = `<div class="sheet-head">
+      <div><p class="kicker">${goal.name} · milestone ${i + 1} of ${goal.steps.length}</p><h2 id="sheet-title">${s.t}</h2></div>
+      <button class="icon-btn" data-act="close" aria-label="Close">✕</button>
+    </div>${body}<div class="actions">${actions}</div>`;
+  el.hidden = false;
+
+  const refresh = () => { rerender(); openSheet(goal, i); };
+  el.onclick = (e) => {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'close') closeSheet();
+    if (act === 'done') { s.done = true; (s.tasks || []).forEach((t) => (t.done = true)); refresh(); }
+    if (act === 'undo') { s.done = false; (s.tasks || []).forEach((t) => (t.done = false)); refresh(); }
+    if (act === 'log') {
+      const other = s.fund.sources.find((x) => x.from === 'Other cash: logged');
+      if (other) other.amount += 4000; else s.fund.sources.push({ from: 'Other cash: logged', amount: 4000 });
+      refresh();
+    }
+  };
+  el.onchange = (e) => {
+    const n = e.target.dataset.task;
+    if (n === undefined) return;
+    s.tasks[n].done = e.target.checked;
+    s.done = s.tasks.every((t) => t.done);
+    refresh();
+  };
+}
+function closeSheet() { $('sheet').hidden = true; habitsArea = null; }
+
+// ---------- Habits ----------
+let habitsArea = null;
+const allHabits = () => DATA.flatMap((a) => a.habits || []);
+const streakText = (h) => (h.streak ? h.streak + '-day streak' : 'No streak yet');
+function toggleHabit(id) {
+  const h = allHabits().find((x) => x.id === id), area = habitsArea;
+  h.done = !h.done;
+  h.streak += h.done ? 1 : -1;
+  renderMap();
+  if (area) openHabits(area);
+}
+function renderStrip() {
+  const el = $('strip'), all = allHabits();
+  const left = el.querySelector('.strip-chips')?.scrollLeft || 0;
+  const focused = document.activeElement?.dataset?.chip;
+  el.innerHTML = `<span class="strip-label"><b>Today</b><small>${all.filter((h) => h.done).length} of ${all.length} habits</small></span>
+    <div class="strip-chips">${all.map((h) => `<button class="habit-chip" type="button" data-chip="${h.id}" aria-pressed="${!!h.done}">
+      <span class="ic">${ICONS.check}</span><span>${h.name}</span><small>${h.streak} ${h.streak === 1 ? 'day' : 'days'}</small></button>`).join('')}</div>`;
+  el.querySelector('.strip-chips').scrollLeft = left;
+  if (focused) el.querySelector(`[data-chip="${focused}"]`)?.focus({ preventScroll: true });
+}
+$('strip').addEventListener('click', (e) => {
+  const id = e.target.closest('[data-chip]')?.dataset.chip;
+  if (id) toggleHabit(id);
+});
+function openHabits(area) {
+  const el = $('sheet');
+  habitsArea = area;
+  el.innerHTML = `<div class="sheet-head">
+      <div><p class="kicker">${area.name}</p><h2 id="sheet-title">Habits</h2></div>
+      <button class="icon-btn" data-act="close" aria-label="Close">✕</button>
+    </div>
+    <ul class="tasks">${area.habits.map((h) => `<li><label><input type="checkbox" id="habit-${h.id}" data-habit="${h.id}" ${h.done ? 'checked' : ''}>
+      <span>${h.name}<small class="muted streak">${streakText(h)}</small></span></label></li>`).join('')}</ul>
+    <p class="muted">Check in once a day. The streak counts days in a row.</p>`;
+  el.hidden = false;
+  el.onclick = (e) => { if (e.target.closest('[data-act="close"]')) closeSheet(); };
+  el.onchange = (e) => { if (e.target.dataset.habit) toggleHabit(e.target.dataset.habit); };
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+
+// ---------- Branching map ----------
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const AREA_GAP = 132, GOAL_GAP = 104, SIDE_GAP = 150, SLOT_W = 172, SLOT_H = 76, FIRST_STEP = 78, STEP_GAP = 60;
+const vp = $('viewport'), world = $('world'), nodesEl = $('nodes'), edgesEl = $('edges');
+const open = new Set();
+const view = { x: 0, y: 0, k: 1 };
+let byId = {}, seen = new Set();
+
+const goalNode = (g) => ({ id: g.id, type: 'goal', src: g, kids: (g.paths || []).map(goalNode) });
+// Each area with habits also unfolds a Habits node: before the goals for side areas, after them for up/down areas.
+const tree = DATA.map((a) => {
+  const goals = a.goals.map(goalNode);
+  const habits = a.habits ? [{ id: a.id + '-habits', type: 'habits', src: a, kids: [] }] : [];
+  return { id: a.id, type: 'area', src: a, dir: a.dir, kids: DIRS[a.dir][0] ? [...habits, ...goals] : [...goals, ...habits] };
+});
+const slots = (n) => (open.has(n.id) && n.kids.length ? n.kids.reduce((sum, k) => sum + slots(k), 0) : 1);
+
+function layout() {
+  const nodes = [{ id: 'you', type: 'you', x: 0, y: 0 }], edges = [];
+  const place = (n, x, y, dir, parent) => {
+    Object.assign(n, { x, y, dir, parent });
+    nodes.push(n);
+    if (!open.has(n.id)) return;
+    const [dx, dy] = DIRS[dir], vertical = dy !== 0;
+    if (n.kids.length) {
+      let at = -slots(n) / 2;
+      for (const k of n.kids) {
+        const w = slots(k), off = at + w / 2;
+        at += w;
+        edges.push({ a: n, b: k, vertical });
+        place(k, vertical ? x + off * SLOT_W : x + dx * SIDE_GAP, vertical ? y + dy * GOAL_GAP : y + off * SLOT_H, dir, n);
+      }
+    } else if (n.src.steps) {
+      const sy = dir === 'up' ? -1 : 1;
+      let prev = n;
+      n.src.steps.forEach((s, i) => {
+        const step = { id: n.id + '-' + i, type: 'step', goal: n.src, i, x, y: y + sy * (FIRST_STEP + i * STEP_GAP), dir, parent: n };
+        nodes.push(step);
+        edges.push({ a: prev, b: step, vertical: true, done: s.done });
+        prev = step;
+      });
+    }
+  };
+  for (const a of tree) {
+    const [dx, dy] = DIRS[a.dir];
+    edges.push({ a: nodes[0], b: a, straight: true });
+    place(a, dx * AREA_GAP, dy * AREA_GAP, a.dir, nodes[0]);
+  }
+  return { nodes, edges };
+}
+
+function nodeHTML(n) {
+  const at = `left:${n.x}px;top:${n.y}px`;
+  const cls = (seen.has(n.id) ? '' : ' new') + (open.has(n.id) ? ' open' : '');
+  if (n.type === 'you') return `<button class="node you" data-id="you" style="${at}" aria-label="You. Back to the centre">You</button>`;
+  if (n.type === 'area') {
+    const p = percent(n.src.goals.flatMap(stepsUnder));
+    return `<button class="node area${cls}" data-id="${n.id}" style="${at};--p:${p}" aria-expanded="${open.has(n.id)}">
+      <span class="disc"><b>${n.src.name}</b><small>${n.src.goals.length ? p + '%' : 'No goals'}</small></span></button>`;
+  }
+  if (n.type === 'habits') {
+    const hs = n.src.habits;
+    return `<button class="node habits${cls}" data-id="${n.id}" style="${at}"><b>Habits</b><small>${hs.filter((h) => h.done).length} of ${hs.length} today</small></button>`;
+  }
+  if (n.type === 'goal') {
+    const g = n.src;
+    const bar = g.target ? `<span class="bar"><i style="width:${100 * g.paths.reduce((s, p) => s + p.earned, 0) / g.target.of}%"></i></span>` : '';
+    return `<button class="node goal${cls}" data-id="${n.id}" style="${at}"><b>${g.name}</b><small>${goalSub(g)}</small>${bar}</button>`;
+  }
+  const state = stepState(n.goal, n.i);
+  const icon = { done: ICONS.check, next: ICONS.dot, locked: ICONS.lock, todo: '' }[state];
+  return `<button class="node step ${state}${cls}" data-id="${n.id}" style="${at}" aria-label="${n.goal.steps[n.i].t}: ${STATE_LABEL[state]}">
+    <span class="ic">${icon}</span><span>${n.goal.steps[n.i].t}</span></button>`;
+}
+function edgePath({ a, b, straight, vertical }) {
+  if (straight) return `M${a.x},${a.y} L${b.x},${b.y}`;
+  if (vertical) { const m = (a.y + b.y) / 2; return `M${a.x},${a.y} C${a.x},${m} ${b.x},${m} ${b.x},${b.y}`; }
+  const m = (a.x + b.x) / 2;
+  return `M${a.x},${a.y} C${m},${a.y} ${m},${b.y} ${b.x},${b.y}`;
+}
+function renderMap() {
+  const focused = document.activeElement?.dataset?.id;
+  const { nodes, edges } = layout();
+  byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  let svg = edges.map((e) => `<path class="${e.done ? 'done' : ''}" d="${edgePath(e)}"/>`).join('');
+  // Remote work feeds the trading deposit: drawn when both milestones are showing.
+  const from = byId['remote-3'], to = byId['trading-2'];
+  if (from && to) {
+    const x1 = from.x + 78, x2 = to.x - 78 - 7;
+    svg += `<path class="feeds" d="M${x1},${from.y} C${x1 + 14},${from.y} ${x2 - 14},${to.y} ${x2},${to.y}"/>
+      <path class="arrow" d="M${x2 - 1},${to.y - 5} l8,5 -8,5z"/>`;
+  }
+  edgesEl.innerHTML = svg;
+  nodesEl.innerHTML = nodes.map(nodeHTML).join('');
+  seen = new Set(nodes.map((n) => n.id));
+  if (focused) nodesEl.querySelector(`[data-id="${focused}"]`)?.focus({ preventScroll: true });
+  renderStrip();
+}
+function apply(glide) {
+  world.classList.toggle('glide', !!glide);
+  world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.k})`;
+  vp.style.backgroundSize = `${26 * view.k}px ${26 * view.k}px`;
+  vp.style.backgroundPosition = `${view.x}px ${view.y}px`;
+}
+function centre(glide) {
+  Object.assign(view, { x: vp.clientWidth / 2, y: vp.clientHeight * 0.45, k: 1 });
+  apply(glide);
+}
+function focusOn(n) {
+  const w = vp.clientWidth, h = vp.clientHeight;
+  const anchor = n.type === 'area'
+    ? { down: [w / 2, 140], up: [w / 2, h - 200], right: [84, 190], left: [w - 84, h / 2] }[n.dir]
+    : n.dir === 'up' ? [w / 2, h - 270] : [w / 2, 230];
+  const x = n.parent?.src?.target ? n.parent.x : n.x;
+  view.x = anchor[0] - x * view.k;
+  view.y = anchor[1] - n.y * view.k;
+  apply(true);
+}
+function zoomAt(k, cx, cy) {
+  k = Math.min(2.2, Math.max(0.45, k));
+  const wx = (cx - view.x) / view.k, wy = (cy - view.y) / view.k;
+  Object.assign(view, { k, x: cx - wx * k, y: cy - wy * k });
+}
+
+nodesEl.addEventListener('click', (e) => {
+  const n = byId[e.target.closest('.node')?.dataset.id];
+  if (!n) return;
+  const hint = $('hint');
+  hint.classList.add('gone');
+  if (n.type === 'you') return centre(true);
+  if (n.type === 'step') return openSheet(n.goal, n.i);
+  if (n.type === 'habits') return openHabits(n.src);
+  closeSheet();
+  if (n.type === 'goal' && BOTH && n.src.steps) return openRoad(n.id, true);
+  if (n.type === 'area' && !n.kids.length) {
+    hint.textContent = 'No goals in ' + n.src.name + ' yet. Here you would add one.';
+    hint.classList.remove('gone');
+    return;
+  }
+  if (open.has(n.id)) open.delete(n.id); else open.add(n.id);
+  renderMap();
+  if (open.has(n.id)) focusOn(byId[n.id]);
+});
+
+const pts = new Map();
+let drag = null, pinch = null, moved = false;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+vp.addEventListener('pointerdown', (e) => {
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pts.size === 1) { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; moved = false; }
+  if (pts.size === 2) {
+    const [a, b] = [...pts.values()];
+    pinch = { d: dist(a, b), k: view.k, wx: ((a.x + b.x) / 2 - view.x) / view.k, wy: ((a.y + b.y) / 2 - view.y) / view.k };
+    moved = true;
+  }
+});
+addEventListener('pointermove', (e) => {
+  if (!pts.has(e.pointerId)) return;
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && pts.size === 2) {
+    const [a, b] = [...pts.values()];
+    const k = Math.min(2.2, Math.max(0.45, pinch.k * dist(a, b) / pinch.d));
+    Object.assign(view, { k, x: (a.x + b.x) / 2 - pinch.wx * k, y: (a.y + b.y) / 2 - pinch.wy * k });
+    apply();
+  } else if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.hypot(dx, dy) > 6) moved = true;
+    if (moved) { view.x = drag.vx + dx; view.y = drag.vy + dy; vp.classList.add('dragging'); apply(); }
+  }
+});
+const lift = (e) => {
+  pts.delete(e.pointerId);
+  pinch = null;
+  const rest = [...pts.values()][0];
+  drag = rest ? { x: rest.x, y: rest.y, vx: view.x, vy: view.y } : null;
+  vp.classList.remove('dragging');
+};
+addEventListener('pointerup', lift);
+addEventListener('pointercancel', lift);
+vp.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+vp.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  zoomAt(view.k * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+  apply();
+}, { passive: false });
+$('zin').onclick = () => { zoomAt(view.k * 1.25, vp.clientWidth / 2, vp.clientHeight / 2); apply(true); };
+$('zout').onclick = () => { zoomAt(view.k / 1.25, vp.clientWidth / 2, vp.clientHeight / 2); apply(true); };
+$('home').onclick = () => centre(true);
+nodesEl.addEventListener('focusin', (e) => {
+  vp.scrollTo(0, 0);
+  const r = e.target.getBoundingClientRect();
+  if (r.left < 0 || r.top < 60 || r.right > vp.clientWidth || r.bottom > vp.clientHeight) {
+    const n = byId[e.target.dataset.id];
+    view.x = vp.clientWidth / 2 - n.x * view.k;
+    view.y = vp.clientHeight / 2 - n.y * view.k;
+    apply(true);
+  }
+});
+
+// ---------- Journey road ----------
+const GAP = 118, TOP = 64;
+function openRoad(id, fromMap) {
+  road = allGoals().find((x) => x.goal.id === id);
+  roadFromMap = fromMap;
+  show('road');
+  $('kicker').textContent = road.area.name + (road.parent ? ' · ' + road.parent.name : '');
+  $('road-title').textContent = road.goal.name;
+  $('road-back').setAttribute('aria-label', fromMap ? 'Back to the map' : 'Back to the options');
+  $('chips').innerHTML = allGoals().map((x) =>
+    `<button type="button" data-goal="${x.goal.id}" aria-pressed="${x.goal === road.goal}">${x.goal.name}</button>`).join('');
+  renderRoad();
+}
+function renderRoad() {
+  const { goal, parent } = road, steps = goal.steps, n = steps.length;
+  const done = steps.filter((s) => s.done).length;
+  $('progress').innerHTML = `<div class="progress-row"><b>${done} of ${n} milestones</b>
+    <span>${goal.earned !== undefined ? KES(goal.earned) + ' earned' : percent(steps) + '%'}</span></div>
+    <span class="bar"><i style="width:${percent(steps)}%"></i></span>`;
+
+  const el = $('road'), W = el.clientWidth, H = TOP + n * GAP + 110;
+  const p = steps.map((s, i) => ({ x: W * (i % 2 ? 0.74 : 0.26), y: TOP + i * GAP }));
+  p.push({ x: W / 2, y: TOP + n * GAP });
+  let svg = '', html = '';
+  for (let i = 0; i < n; i++) {
+    const a = p[i], b = p[i + 1];
+    const d = `M${a.x},${a.y} C${a.x},${a.y + GAP / 2} ${b.x},${b.y - GAP / 2} ${b.x},${b.y}`;
+    svg += `<path class="${steps[i].done ? 'done' : ''}" d="${d}"/><path class="dash" d="${d}"/>`;
+  }
+  steps.forEach((s, i) => {
+    const state = stepState(goal, i), right = i % 2;
+    const inner = { done: ICONS.check, locked: ICONS.lock, next: ICONS.dot, todo: i + 1 }[state];
+    const sub = state === 'next' ? 'You are here'
+      : state === 'locked' ? 'Locked · ' + KES(funded(s)) + ' of ' + KES(s.fund.need) : STATE_LABEL[state];
+    const side = right ? `right:${W - p[i].x - 30}px` : `left:${p[i].x - 30}px`;
+    html += `<button class="stop ${state} ${right ? 'right' : ''}" data-i="${i}" style="${side};top:${p[i].y - 30}px;max-width:${W * 0.74 + 20}px">
+      <span class="dot">${inner}</span><span><b>${s.t}</b><small>${sub}</small></span></button>`;
+  });
+  html += `<div class="finish ${done === n ? 'reached' : ''}" style="left:${p[n].x}px;top:${p[n].y - 30}px">
+    <div class="dot">${ICONS.flag}</div><b>${goal.name}</b>
+    <small>${parent ? 'Feeds: ' + parent.name : done === n ? 'Goal reached' : 'Finish line'}</small></div>`;
+  const focused = document.activeElement?.dataset?.i;
+  el.style.height = H + 'px';
+  el.innerHTML = `<svg width="${W}" height="${H}" aria-hidden="true">${svg}</svg>${html}`;
+  if (focused !== undefined) el.querySelector(`[data-i="${focused}"]`)?.focus({ preventScroll: true });
+}
+$('road').addEventListener('click', (e) => {
+  const i = e.target.closest('.stop')?.dataset.i;
+  if (i !== undefined) openSheet(road.goal, +i);
+});
+$('chips').addEventListener('click', (e) => {
+  const id = e.target.closest('[data-goal]')?.dataset.goal;
+  if (id) openRoad(id, roadFromMap);
+});
+$('road-back').addEventListener('click', () => {
+  if (roadFromMap) { show('map'); renderMap(); } else show('menu');
+});
+addEventListener('resize', () => { if (current === 'road') renderRoad(); });
+</script>
