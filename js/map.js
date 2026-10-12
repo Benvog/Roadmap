@@ -1,5 +1,7 @@
-// The branching map: You in the middle, your areas around you. Ported from mockups/prototype.html.
-import { esc, ICONS } from './ui.js';
+// The branching map: You in the middle, your areas around you, goals and paths unfolding from them.
+// Ported from mockups/prototype.html.
+import { esc, ICONS, amount } from './ui.js';
+import * as model from './model.js';
 
 const AREA_GAP = 132, GOAL_GAP = 104, SIDE_GAP = 150, SLOT_W = 166, SLOT_H = 76;
 const LINE_EACH = 110, LINE_TIME = 240;   // ms between siblings, and for one line to draw
@@ -17,8 +19,9 @@ function edgePath({ a, b, straight, vertical }) {
   return `M${a.x},${a.y} C${m},${a.y} ${m},${b.y} ${b.x},${b.y}`;
 }
 
-// `onAdd(kind, parentRow)` and `onEdit(kind, row)` are called when a "+" or a pencil is tapped.
-export function createMap(root, { onAdd, onEdit }) {
+// `onAdd(kind, parentRow)` and `onEdit(kind, row)` are called when a "+" or a pencil is tapped,
+// and `onOpen(goalRow)` when a goal or a path is tapped.
+export function createMap(root, { onAdd, onEdit, onOpen }) {
   root.innerHTML = `<div id="viewport"><div id="world"><svg id="edges" aria-hidden="true"></svg><div id="nodes"></div></div></div>
     <div class="zoom">
       <button class="icon-btn" type="button" data-zoom="in" aria-label="Zoom in">+</button>
@@ -32,12 +35,18 @@ export function createMap(root, { onAdd, onEdit }) {
 
   const open = new Set();
   const view = { x: 0, y: 0, k: 1 };
-  let data = { areas: [] };
+  let data = { areas: [], goals: [], milestones: [], entries: [] };
   let byId = {}, seen = new Set();
 
   // ---------- Layout ----------
-  // Each area will unfold its goals, a "+" to add a goal, and its Habits node; for now an area has no children.
-  const buildTree = () => data.areas.map((a) => ({ id: a.id, type: 'area', src: a, kids: [] }));
+  const addNode = (src, add) => ({ id: src.id + '-add', type: 'add', add, src, kids: [], sw: 56, sh: 76 });
+  // A target unfolds its paths and a "+" to add one. A plain goal or a path opens its road instead of unfolding.
+  const goalNode = (g) => {
+    const kind = model.kindOf(g);
+    return { id: g.id, type: 'goal', kind, src: g, kids: kind === 'target' ? [...model.pathsOf(data, g.id).map(goalNode), addNode(g, 'path')] : [] };
+  };
+  // Each area unfolds its goals and a "+" to add a goal. (Its Habits node comes with the habits slice.)
+  const buildTree = () => data.areas.map((a) => ({ id: a.id, type: 'area', src: a, kids: [...model.goalsIn(data, a.id).map(goalNode), addNode(a, 'goal')] }));
   // Room a branch needs across its direction of growth (px, py is that sideways axis).
   const span = (n, px, py) => (open.has(n.id) && n.kids.length
     ? n.kids.reduce((sum, k) => sum + span(k, px, py), 0)
@@ -50,6 +59,7 @@ export function createMap(root, { onAdd, onEdit }) {
       nodes.push(n);
       if (!open.has(n.id)) return;
       if (n.type === 'area') nodes.push({ id: n.id + '-edit', type: 'edit', kind: 'area', src: n.src, parent: n, x: x + 38, y: y - 38 });
+      if (n.kind === 'target') nodes.push({ id: n.id + '-edit', type: 'edit', kind: 'target', src: n.src, parent: n, x: x + 76, y: y - 30 });
       const [dx, dy] = d;
       let px = dy, py = -dx;
       if (py < -1e-9 || (Math.abs(py) < 1e-9 && px < 0)) { px = -px; py = -py; }
@@ -78,8 +88,22 @@ export function createMap(root, { onAdd, onEdit }) {
     const cls = (seen.has(n.id) ? '' : ' new') + (open.has(n.id) ? ' open' : '');
     if (n.type === 'you') return `<button class="node you${open.has('you') ? '' : ' closed'}" data-id="you" style="${at}" aria-expanded="${open.has('you')}">You</button>`;
     if (n.type === 'area') {
-      return `<button class="node area${cls}" data-id="${n.id}" style="${at};--p:0" aria-expanded="${open.has(n.id)}">
-        <span class="disc"><b>${esc(n.src.name)}</b><small>No goals</small></span></button>`;
+      const p = model.areaProgress(data, n.id).percent, hasGoals = n.kids.length > 1;
+      return `<button class="node area${cls}" data-id="${n.id}" style="${at};--p:${p}" aria-expanded="${open.has(n.id)}">
+        <span class="disc"><b>${esc(n.src.name)}</b><small>${hasGoals ? p + '%' : 'No goals'}</small></span></button>`;
+    }
+    if (n.type === 'goal') {
+      const g = n.src, unit = g.unit || 'KES';
+      if (n.kind === 'target') {
+        const have = model.targetTotal(data, g.id), want = Number(g.target_amount);
+        return `<button class="node goal${cls}" data-id="${n.id}" style="${at}" aria-expanded="${open.has(n.id)}"><b>${esc(g.name)}</b>
+          <small>${esc(amount(have, unit))} of ${esc(amount(want, unit, true))}</small>
+          <span class="bar"><i style="width:${Math.min(100, 100 * have / want)}%"></i></span></button>`;
+      }
+      const { done, total } = model.progress(model.milestonesOf(data, g.id));
+      const steps = total ? `${done} of ${total} done` : 'No milestones yet';
+      const sub = n.kind === 'path' ? (total ? `${done} of ${total} · ` : '') + amount(model.earnedOn(data, g.id), unit) + (total ? '' : ' earned') : steps;
+      return `<button class="node goal${cls}" data-id="${n.id}" style="${at}"><b>${esc(g.name)}</b><small>${esc(sub)}</small></button>`;
     }
     if (n.type === 'edit') return `<button class="node edit${cls}" data-id="${n.id}" style="${at}" aria-label="Edit ${esc(n.src.name)}">${ICONS.pencil}</button>`;
     const label = 'Add ' + (n.add === 'area' ? 'an area' : 'a ' + n.add + ' to ' + n.src.name);
@@ -206,6 +230,7 @@ export function createMap(root, { onAdd, onEdit }) {
     }
     if (n.type === 'add') return onAdd(n.add, n.src);
     if (n.type === 'edit') return onEdit(n.kind, n.src);
+    if (n.type === 'goal' && n.kind !== 'target') return onOpen(n.src);
     if (open.has(n.id)) open.delete(n.id); else open.add(n.id);
     render();
     if (open.has(n.id)) focusOn(byId[n.id]);

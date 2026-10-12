@@ -1,0 +1,25 @@
+<!doctype html><body style="margin:0;background:#888"><iframe id="f" style="width:390px;height:844px;border:0;display:block"></iframe>
+<script>
+// For phone-width screenshots: opens tests/app.html in a 390px frame and taps through a list of things.
+// ?q=<query for tests/app.html>&taps=<comma list, tapped about 1.5s apart>
+// A tap is a CSS selector (starting with # . or [), or "area:Money" / "goal:Trading" to tap a node by its text,
+// with an optional suffix such as "area:Money-edit" or "goal:Make KES-add" for the small node hanging from it.
+const p = new URLSearchParams(location.search), f = document.getElementById('f');
+const taps = (p.get('taps') || '').split(',').filter(Boolean);
+f.src = '/tests/app.html?' + (p.get('q') || '');
+f.onload = async () => {
+  const d = f.contentDocument, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 50 && !d.querySelector('.node, .card'); i++) await wait(100);
+  for (const t of taps) {
+    await wait(300);
+    let el;
+    const named = t.match(/^(area|goal):(.+?)(-edit|-add)?$/);
+    if (named) {
+      const node = [...d.querySelectorAll('.' + named[1])].find((n) => !n.classList.contains('leaving') && n.textContent.includes(named[2]));
+      el = node && (named[3] ? d.querySelector('[data-id="' + node.dataset.id + named[3] + '"]') : node);
+    } else el = d.querySelector(/^[#.\[]/.test(t) ? t : '[data-id="' + t + '"]');
+    if (el) el.click();
+    await wait(1400);
+  }
+};
+</script></body>

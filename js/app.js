@@ -1,7 +1,8 @@
 // The signed-in app: loads the user's data and runs the map.
 // `store` is passed in (js/store.js in the real app) so tests can supply a stand-in with the same functions.
 import { createMap } from './map.js';
-import { ICONS, openForm, showSheet, sheetHead, closeSheet } from './ui.js';
+import * as model from './model.js';
+import { ICONS, FormError, openForm, showSheet, sheetHead, closeSheet } from './ui.js';
 
 const STARTERS = ['Career', 'Health', 'Money', 'Mental'];   // clockwise from the top, so Money sits at the bottom
 
@@ -39,7 +40,7 @@ export function startApp(root, user, store) {
         <p class="error" id="starter-error" role="alert" hidden>Those could not all be added. Check your connection and try again.</p>
       </div>`;
     document.body.classList.add('lock');
-    map = createMap(root.querySelector('#map'), { onAdd, onEdit });
+    map = createMap(root.querySelector('#map'), { onAdd, onEdit, onOpen });
     refresh();
     map.centre();
 
@@ -55,13 +56,32 @@ export function startApp(root, user, store) {
     map.render();
   }
 
-  const nextPosition = (rows) => rows.reduce((max, r) => Math.max(max, r.position), -1) + 1;
+  // Saves a new row and adds it to the data in memory.
+  async function create(table, fields) {
+    const row = await store.add(table, fields);
+    data[table].push(row);
+    return row;
+  }
+  // Deletes a row; the database removes what hangs under it, and removeLocal does the same in memory.
+  async function destroy(table, row) {
+    await store.remove(table, row.id);
+    model.removeLocal(data, table, row.id);
+  }
+  const name = (placeholder, value) => ({ id: 'name', label: 'Name', placeholder, value });
+  const dueField = (value) => ({ id: 'due', label: 'Due date (optional)', type: 'date', value });
+  // A whole amount above zero, or null when the field was left empty. Anything else is a mistake to point out.
+  function wholeAmount(text) {
+    if (text === '') return null;
+    const n = Math.floor(Number(text));
+    if (!(n > 0)) throw new FormError('Enter an amount above zero, or leave it empty.');
+    return n;
+  }
 
   async function addStarters(e) {
     e.target.disabled = true;
     root.querySelector('#starter-error').hidden = true;
     try {
-      for (const name of STARTERS) data.areas.push(await store.add('areas', { name, position: nextPosition(data.areas) }));
+      for (const starter of STARTERS) await create('areas', { name: starter, position: model.nextPosition(data.areas) });
     } catch (err) {
       e.target.disabled = false;
       root.querySelector('#starter-error').hidden = false;
@@ -73,15 +93,34 @@ export function startApp(root, user, store) {
   }
 
   // ---------- Adding ----------
-  function onAdd(kind) {
+  // `parent` is the row the "+" hangs from: an area for a goal, a target for a path.
+  function onAdd(kind, parent) {
     if (kind === 'area') {
-      openForm({ kicker: 'Your map', title: 'Add an area', submit: 'Add area',
-        fields: [{ id: 'name', label: 'Name', placeholder: 'Learning, Faith, Family' }],
+      openForm({ kicker: 'Your map', title: 'Add an area', submit: 'Add area', fields: [name('Learning, Faith, Family')],
         onSubmit: async (v) => {
-          data.areas.push(await store.add('areas', { name: v.name, position: nextPosition(data.areas) }));
+          await create('areas', { name: v.name, position: model.nextPosition(data.areas) });
           closeSheet();
           refresh();
           map.centre(true);
+        } });
+    }
+    if (kind === 'goal') {
+      openForm({ kicker: parent.name, title: 'Add a goal', submit: 'Add goal',
+        fields: [name('Read 12 books'), { id: 'target', label: 'Target amount in KES (optional)', type: 'number', placeholder: 'Only for money goals' }],
+        onSubmit: async (v) => {
+          const target = wholeAmount(v.target);
+          await create('goals', { area_id: parent.id, name: v.name, position: model.nextPosition(model.goalsIn(data, parent.id)),
+            ...(target ? { target_amount: target } : {}) });
+          closeSheet();
+          refresh();
+        } });
+    }
+    if (kind === 'path') {
+      openForm({ kicker: parent.name, title: 'Add a path', submit: 'Add path', fields: [name('A way to reach this target')],
+        onSubmit: async (v) => {
+          await create('goals', { area_id: parent.area_id, parent_id: parent.id, name: v.name, position: model.nextPosition(model.pathsOf(data, parent.id)) });
+          closeSheet();
+          refresh();
         } });
     }
   }
@@ -99,8 +138,7 @@ export function startApp(root, user, store) {
         }
         onEdit('area', row);
       };
-      openForm({ kicker: 'Area', title: 'Edit ' + row.name, submit: 'Save',
-        fields: [{ id: 'name', label: 'Name', value: row.name }],
+      openForm({ kicker: 'Area', title: 'Edit ' + row.name, submit: 'Save', fields: [name('', row.name)],
         extras: data.areas.length > 1 ? [{ label: 'Move clockwise', run: move(1) }, { label: 'Move anticlockwise', run: move(-1) }] : [],
         onSubmit: async (v) => {
           Object.assign(row, await store.update('areas', row.id, { name: v.name }));
@@ -109,13 +147,38 @@ export function startApp(root, user, store) {
         },
         remove: { label: 'Delete this area', confirm: `Delete ${row.name} and everything in it?`,
           run: async () => {
-            await store.remove('areas', row.id);
-            data.areas.splice(data.areas.indexOf(row), 1);
+            await destroy('areas', row);
             closeSheet();
             refresh();
             map.centre(true);
           } } });
     }
+    if (kind === 'target') {
+      openForm({ kicker: 'Target', title: 'Edit ' + row.name, submit: 'Save',
+        fields: [name('', row.name), { id: 'target', label: 'Target amount in KES', type: 'number', value: Number(row.target_amount) }],
+        onSubmit: async (v) => {
+          const target = wholeAmount(v.target);
+          if (!target) throw new FormError('A target needs an amount above zero.');
+          Object.assign(row, await store.update('goals', row.id, { name: v.name, target_amount: target }));
+          closeSheet();
+          refresh();
+        },
+        remove: { label: 'Delete this target', confirm: `Delete ${row.name} and its paths?`,
+          run: async () => { await destroy('goals', row); closeSheet(); refresh(); } } });
+    }
+  }
+
+  // Tapping a goal or a path. Until its road is built, this opens its details; the road will take over this tap.
+  function onOpen(goal) {
+    const path = model.kindOf(goal) === 'path';
+    openForm({ kicker: path ? 'Path' : 'Goal', title: 'Edit ' + goal.name, submit: 'Save', fields: [name('', goal.name), dueField(goal.due_date)],
+      onSubmit: async (v) => {
+        Object.assign(goal, await store.update('goals', goal.id, { name: v.name, due_date: v.due || null }));
+        closeSheet();
+        refresh();
+      },
+      remove: { label: path ? 'Delete this path' : 'Delete this goal', confirm: `Delete ${goal.name} and its milestones?`,
+        run: async () => { await destroy('goals', goal); closeSheet(); refresh(); } } });
   }
 
   // ---------- Top bar ----------

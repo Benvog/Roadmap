@@ -123,6 +123,15 @@ body.lock { overflow: hidden; }
 .area b { font-size: 14.5px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
 .area small { color: var(--muted); font-size: 12px; }
 .area.open { box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+.goal {
+  width: 156px; padding: 9px 11px; border-radius: 14px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.goal.open { border-color: var(--accent); }
+.goal b { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.goal small { display: block; margin-top: 2px; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.bar { display: block; height: 5px; margin-top: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
 .add {
   width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center;
   background: var(--bg); border: 2px dashed var(--accent); color: var(--accent); font-size: 20px; font-weight: 700;

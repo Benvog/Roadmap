@@ -18,7 +18,13 @@ async function open(query) {
   const areas = () => [...d.querySelectorAll('.area:not(.leaving) b')].map((b) => b.textContent).join(',');
   const zoom = () => q('#world').style.transform.match(/scale\(([^)]+)\)/)?.[1];
   const sheet = () => { const s = q('.sheet'); return s && !s.hidden ? s : null; };
-  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, store: w.fakeStore };
+  // The node of a given kind whose text contains `text`, and a way to tap it or a small node hanging from it.
+  const find = (sel, text) => [...d.querySelectorAll(sel)].find((el) => !el.classList.contains('leaving') && el.textContent.includes(text));
+  const tapNode = (sel, text, suffix = '') => { const el = find(sel, text); if (!el) throw new Error('no ' + sel + ' with ' + text); tap(node(el.dataset.id + suffix)); };
+  const goals = () => [...d.querySelectorAll('.goal:not(.leaving)')].map((g) => g.querySelector('b').textContent + ' [' + g.querySelector('small').textContent.trim() + ']').join(' ; ');
+  const fill = (id, value) => { q('#' + id).value = value; };
+  const submit = async (ms = 900) => { tap('#sheet-form [type=submit]'); await wait(ms); };
+  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, store: w.fakeStore };
 }
 async function scenario(name, query, steps) {
   const log = [];
@@ -64,6 +70,41 @@ async function scenario(name, query, steps) {
     t.tap('#theme'); say('theme button', t.d.documentElement.dataset.theme);
     t.tap('#account'); say('account', t.sheet().textContent.replace(/\s+/g, ' ').trim());
     t.tap('[data-act="sign-out"]'); await wait(100); say('sign out called', t.store.signedOut);
+    say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
+  });
+  await scenario('goals', '?theme=light', async (t, say) => {
+    t.tap(t.node('you')); await wait(1300);
+    say('before', t.find('.area', 'Money').textContent.replace(/\s+/g, ' ').trim());
+    t.tapNode('.area', 'Money'); await wait(1000);
+    say('Money opened', 'add goal node: ' + !!t.find('.add', 'Goal') + ' | zoom ' + t.zoom());
+    t.tapNode('.area', 'Money', '-add'); say('goal form', t.sheet().querySelector('h2').textContent + ' in ' + t.sheet().querySelector('.kicker').textContent);
+    t.fill('f-name', 'Emergency fund'); await t.submit();
+    say('plain goal', t.goals() + ' | area now: ' + t.find('.area', 'Money').querySelector('small').textContent);
+    t.tapNode('.area', 'Money', '-add'); t.fill('f-name', 'Make KES 100,000'); t.fill('f-target', '-5'); t.tap('#sheet-form [type=submit]'); await wait(200);
+    say('bad amount', t.q('#sheet-error').textContent + ' | still open: ' + !!t.sheet());
+    t.fill('f-target', '100000'); await t.submit();
+    say('target added', t.goals());
+    t.tapNode('.goal', 'Make KES 100,000'); await wait(1000);
+    say('target opened', 'add path node: ' + !!t.find('.add', 'Path') + ' | pencil: ' + !!t.q(t.node(t.find('.goal', 'Make KES').dataset.id + '-edit')));
+    for (const p of ['Remote work', 'Trading']) { t.tapNode('.goal', 'Make KES 100,000', '-add'); t.fill('f-name', p); await t.submit(1100); }
+    say('paths', t.goals());
+    const target = t.store.rows('goals').find((g) => g.name === 'Make KES 100,000');
+    say('saved rows', t.store.rows('goals').map((g) => g.name + (g.parent_id === target.id ? ' (path of target)' : '') + (g.target_amount ? ' (target ' + g.target_amount + ')' : '')).join(' ; '));
+    t.tapNode('.goal', 'Make KES 100,000', '-edit'); say('target form', t.q('#f-name').value + ' / ' + t.q('#f-target').value);
+    t.fill('f-target', ''); t.tap('#sheet-form [type=submit]'); await wait(200); say('empty amount', t.q('#sheet-error').textContent);
+    t.fill('f-target', '150000'); await t.submit(); say('target edited', t.find('.goal', 'Make KES').querySelector('small').textContent.trim());
+    t.tapNode('.goal', 'Trading'); say('path tap', t.sheet().querySelector('h2').textContent + ' (' + t.sheet().querySelector('.kicker').textContent + ')');
+    t.fill('f-name', 'Trading forex'); t.fill('f-due', '2027-06-30'); await t.submit();
+    say('path edited', t.goals() + ' | due saved: ' + t.store.rows('goals').find((g) => g.name === 'Trading forex').due_date);
+    t.tapNode('.goal', 'Trading forex'); say('due shows again', t.q('#f-due').value); t.tap('[data-act="ask-delete"]'); say('delete path asks', t.q('#sheet-danger p').textContent);
+    t.tap('[data-act="delete"]'); await wait(900); say('path deleted', t.goals());
+    t.tapNode('.goal', 'Make KES 100,000'); await wait(900); say('target folded', t.goals());
+    t.tapNode('.goal', 'Make KES 100,000'); await wait(900);
+    t.tapNode('.goal', 'Make KES 100,000', '-edit'); t.tap('[data-act="ask-delete"]'); say('delete target asks', t.q('#sheet-danger p').textContent);
+    t.tap('[data-act="delete"]'); await wait(900);
+    say('target deleted', t.goals() + ' | goal rows left: ' + t.store.rows('goals').map((g) => g.name).join(','));
+    t.tapNode('.area', 'Money', '-edit'); t.tap('[data-act="ask-delete"]'); t.tap('[data-act="delete"]'); await wait(1200);
+    say('area deleted', t.areas() + ' | goal rows left: ' + t.store.rows('goals').length);
     say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
   });
   await scenario('empty', '?areas=empty', async (t, say) => {

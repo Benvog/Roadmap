@@ -22,11 +22,11 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [x] Create Supabase project; tables + row-level security (`supabase/schema.sql` run on 2026-10-12; project details in `js/config.js`)
 - [x] Magic-link sign-in working locally (`index.html`, `css/app.css`, `js/main.js`, `js/store.js`). Signed in on the PC on 2026-10-12, and a signed-in database check passed: own rows save and read back, a row under another login and a goal under a foreign area are refused, and deleting an area removes its goal
 - [x] `js/store.js` data layer (`loadAll`, `add`, `update`, `remove`, `checkIn`, `undoCheckIn`). A signed-in check passed on 2026-10-12: one of everything saved, loaded back linked, edited, and removed by deleting its area
-- [ ] View offline (do this after the map shows real data, so it can be seen and tested): keep a copy of the last loaded data on the device and show it, read-only, with an "offline" note when there is no connection
+- [ ] View offline (do this after the map shows real data, so it can be seen and tested; keep the saved copy per account and clear it on sign-out): keep a copy of the last loaded data on the device and show it, read-only, with an "offline" note when there is no connection
 
 ## Phase 3: Core app
 - [x] Branching map home, slice 1: You and areas on real data (pan, zoom, the opening motion and zoom camera; add, rename, move and delete areas; a starter set for an empty map). Passing `tests/run.sh` and tried signed in on the PC on 2026-10-12
-- [ ] Branching map home, slice 2: goals, targets and paths inside an area, and progress per area
+- [x] Branching map home, slice 2: goals, targets and paths inside an area, and progress per area. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-12. Until the road exists, tapping a goal or path opens its edit form (name, due date, delete)
 - [ ] Journey road per goal: milestones as stops, tasks in the milestone sheet, roll-up progress and due dates
 - [ ] List view of areas
 - [ ] Habits with check-ins and streak counts, daily or a number of times a week (with a "how often" choice in the add and edit forms)

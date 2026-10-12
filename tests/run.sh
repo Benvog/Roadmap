@@ -3,6 +3,7 @@
 # Usage (Git Bash, from anywhere):  bash tests/run.sh
 # It starts its own local server and stops it, and the browser, when done. Exits 1 if any scenario reported a problem.
 cd "$(dirname "$0")/.." || exit 1
+node tests/model.test.mjs || exit 1
 PY="$LOCALAPPDATA/Programs/Python/Python313/python.exe"
 EDGE="/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
 PORT=8765

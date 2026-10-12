@@ -7,10 +7,17 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 ## Where things stand (2026-10-12)
 - Phase 1 (design) is done: every screen and behaviour is decided and mocked in `mockups/prototype.html`.
 - Phase 2 (data and setup) is done except view-offline, which waits until a screen shows real data.
-- The real app so far is sign-in, the data layer, and slice 1 of the map: You and your areas (add, rename, move,
-  delete), saved to Supabase.
-- Phase 3 goes in slices: You and areas (built); goals, targets and paths; a goal's road with milestones
-  and tasks; habits; then logging and funding. Port behaviour from the prototype, do not redesign it.
+- The real app so far is sign-in, the data layer, and two slices of the map: You and your areas, then goals,
+  targets and paths inside an area. All of it saves to Supabase.
+- Phase 3 goes in slices: You and areas (done); goals, targets and paths (done); next, a goal's road with
+  milestones and tasks; then habits; then logging and funding. Port behaviour from the prototype, do not redesign it.
+- Each slice has gone the same way and should keep doing so: build it, extend `tests/drive.html`, run
+  `bash tests/run.sh`, look at phone-width screenshots, then ask the user to try it signed in at
+  http://localhost:8000 before committing.
+- Not yet in the real app (all are in the prototype): the Habits node and the Today strip, milestones and tasks,
+  logging amounts, funding and locked milestones, due dates shown on screen, the List view.
+- Until the road is built, tapping a goal or a path opens its edit form (`onOpen` in `js/app.js`). The road takes
+  over that tap, and the edit moves to a pencil in the road's header as in the prototype.
 
 ## Stack
 - Static site: plain HTML, CSS and JavaScript (ES modules), no build step.
@@ -27,9 +34,13 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - `js/app.js`: the signed-in app. `startApp(root, user, store)` loads the data, runs the map and handles adding and
   editing. The store is passed in, so tests can run the real app with a stand-in.
 - `js/map.js`: the map itself (layout, the opening motion, the camera, pan and zoom). It only draws and reports taps.
+- `js/model.js`: works things out from the flat lists (an area's goals, a target's paths, progress, totals) and
+  `removeLocal`, which mirrors the database's cascade when a row is deleted. Checked by `tests/model.test.mjs`.
 - `js/ui.js`: `esc`, icons, and the bottom sheet with its forms (`openForm`).
-- `tests/`: `run.sh` runs `drive.html`, which drives the real app through `app.html` using `fake-store.js`
-  (an in-memory stand-in for `store.js`). `tests/app.html` can also be opened by hand to see the app without signing in.
+- `tests/`: `run.sh` runs `model.test.mjs` with Node, then `drive.html`, which drives the real app through
+  `app.html` using `fake-store.js` (an in-memory stand-in for `store.js`). `tests/app.html` can also be opened by
+  hand to see the app without signing in (`?seed=1` adds a target with paths). `tests/shot.html` taps through a
+  list of things inside a 390px frame, for phone-width screenshots.
 - `js/store.js`: the only module that talks to Supabase. Sign-in functions, then `loadAll`, `add`, `update`,
   `remove`, `checkIn`, `undoCheckIn`. `loadAll` returns flat lists keyed by table name; nothing computes totals yet.
 - `js/config.js`: the Supabase project URL and publishable key. Both are public by design.
@@ -54,8 +65,9 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
   scenario saw. It starts and stops its own server and browser, and exits 1 on a problem. Add steps to
   `tests/drive.html` for each new slice, and run it before every commit.
 - Headless Edge is `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --headless=new`.
-- A Bash command that contains a backtick inside a heredoc fails to parse in this tool. Write files that contain
-  JavaScript template strings with the Write tool instead.
+- Long Bash commands that carry JavaScript or HTML in a heredoc have failed to parse here three times
+  ("unexpected EOF while looking for matching quote"); the exact cause is unknown. Create or patch such files with
+  the Write tool (for a patch, write a small Python script and run it) instead of a heredoc.
 - Headless Edge will not go narrower than about 500px. For a phone-width screenshot, load the page in a
   390px-wide iframe from a small same-origin wrapper page and screenshot that.
 - `--virtual-time-budget` with `--dump-dom` is unreliable for this app: it sometimes dumps before the page
@@ -82,13 +94,25 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - No reminders, charts/history or sharing in v1 (see PRD "Not building").
 
 ## Security
-- A background security review runs on each commit and has found real issues three times. Treat its
+- A background security review runs on each commit and has found real issues four times. Treat its
   findings as work to do: explain the finding to the user in plain terms, fix it, and say what was tested.
 - Decisions that came from it: child rows must share their parent's owner (composite foreign keys);
-  sign-in uses PKCE; no third-party code is fetched at run time.
+  sign-in uses PKCE; no third-party code is fetched at run time; when the signed-in account changes, the running
+  app is stopped before the next one starts, and closing the sheet empties it. Anything kept on the device for
+  one account (the offline copy, when it is built) must be kept per account and cleared on sign-out.
 - New sign-ups can be switched off in Supabase (Authentication, Sign In / Providers). Recommended to the
   user for a personal app; not confirmed done.
 - Never ask for or store the Supabase `service_role` key or the database password.
+
+## How the app is put together
+- `main.js` decides between the sign-in screens and the app. `app.js` owns the data in memory (`data`, the flat
+  lists from `store.loadAll()`), every add, edit and delete, and the forms. `map.js` only draws `data` and calls
+  back (`onAdd`, `onEdit`, `onOpen`).
+- A change is saved first, then applied to `data`, then the map is redrawn (`create`, `destroy` and `refresh` in
+  `app.js`). If the save fails, the form stays open with a message and nothing changes on screen.
+- A form's `onSubmit` can throw `FormError('message')` (from `ui.js`) to show a specific message, such as a bad amount.
+- Map nodes are rebuilt on every draw and animated from where they were (`shown` in `map.js`). Node ids are the
+  row ids; the small "+" and pencil nodes are the parent's id plus `-add` or `-edit`.
 
 ## Workflow
 - Follow `docs/PLAN.md`: one small task at a time, show the result, wait for approval,

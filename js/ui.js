@@ -3,6 +3,13 @@
 // Anything a user typed goes through this before it is put into HTML.
 export const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// "KES 12,000", or "12 books" for a target that counts something else. `bare` leaves the unit off a second KES figure.
+export function amount(n, unit = 'KES', bare = false) {
+  const figure = Number(n).toLocaleString('en-KE', { maximumFractionDigits: 2 });
+  if (unit !== 'KES') return figure + (bare ? ' ' + unit : '');
+  return bare ? figure : 'KES ' + figure;
+}
+
 const svg = (body, extra = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"') =>
   `<svg viewBox="0 0 24 24" ${extra} aria-hidden="true">${body}</svg>`;
 export const ICONS = {
@@ -27,8 +34,12 @@ export function showSheet(html) {
   sheet.hidden = false;
   return sheet;
 }
+// Closing also empties the sheet, so nothing from one account's forms is left in the page for the next.
 export function closeSheet() {
-  if (sheet) sheet.hidden = true;
+  if (!sheet) return;
+  sheet.hidden = true;
+  sheet.innerHTML = '';
+  sheet.onclick = null;
 }
 export const sheetHead = (kicker, title) => `<div class="sheet-head">
     <div><p class="kicker">${esc(kicker)}</p><h2 id="sheet-title">${esc(title)}</h2></div>
@@ -36,6 +47,9 @@ export const sheetHead = (kicker, title) => `<div class="sheet-head">
   </div>`;
 
 const SAVE_FAILED = 'That could not be saved. Check your connection and try again.';
+
+// Throw this from a form's onSubmit to show the person a specific message instead of the general one.
+export class FormError extends Error {}
 
 // A form in the sheet. `fields` are { id, label, type, value, placeholder }; a first field with id "name" is required.
 // `onSubmit(values)`, each `extras[].run()` and `remove.run()` may be async; a failure shows a message and keeps the form open.
@@ -63,7 +77,7 @@ export function openForm({ kicker, title, fields, submit, onSubmit, extras = [],
       await work();
     } catch (err) {
       buttons.forEach((b) => (b.disabled = false));
-      fail(SAVE_FAILED);
+      fail(err instanceof FormError ? err.message : SAVE_FAILED);
     }
   };
 

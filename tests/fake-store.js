@@ -1,5 +1,7 @@
 // A stand-in for js/store.js that keeps everything in memory, so the app can be run and tested without signing in.
 // It offers the same functions and the same shapes; nothing here touches Supabase.
+import { removeLocal } from '../js/model.js';
+
 const TABLES = ['areas', 'goals', 'milestones', 'tasks', 'habits', 'habit_checkins', 'entries', 'funding'];
 
 export function createFakeStore({ areas = [], failing = false } = {}) {
@@ -34,7 +36,7 @@ export function createFakeStore({ areas = [], failing = false } = {}) {
   };
   store.remove = async (table, id) => {
     guard(`remove ${table}`);
-    db[table] = db[table].filter((r) => r.id !== id);
+    removeLocal(db, table, id);   // the real database cascades the same way
   };
   store.signOut = async () => { store.signedOut = true; };
   store.rows = (table) => db[table];

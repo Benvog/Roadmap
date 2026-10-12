@@ -68,12 +68,14 @@ function showLinkSent(address) {
   document.getElementById('other-email').addEventListener('click', () => showSignIn({ email: address }));
 }
 
-let stopApp = null;   // stops the running map when the person signs out
+let stopApp = null;   // stops the running map when the person signs out or another account signs in
 let shownFor;   // the user id on screen, so a repeated sign-in event doesn't redraw it
 function show(user) {
   if (user) {
     if (shownFor === user.id) return;
     shownFor = user.id;
+    // If another account signs in (say, in a second tab) without a sign-out first, the first one's map must not keep running.
+    stopApp?.();
     stopApp = startApp(app, user, store);
   } else {
     if (shownFor === null) return;
