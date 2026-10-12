@@ -52,3 +52,4 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 - 2026-10-07: Currency is KES. Funding targets (like the trading deposit) fill from any source, not only a linked path.
 - 2026-10-12: Map style is "both": branching map as home, each goal opens as a journey road. Chosen from interactive mockups in `mockups/`; the areas list is kept as a List view.
 - 2026-10-12: Habits show in two places: a "Today" strip under the map for one-tap check-ins, and a Habits node that unfolds in each area.
+- 2026-10-12: Money is logged on the path that earned it ("Log amount" on the path's road, with a note) and rolls up to the target. Funding a milestone such as the trading deposit is logged separately on that milestone.

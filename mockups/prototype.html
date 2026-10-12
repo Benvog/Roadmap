@@ -178,6 +178,26 @@
   .progress-row span { color: var(--muted); }
   .progress .bar { margin-top: 8px; }
 
+  .toward {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums;
+  }
+  .toward b { display: block; color: var(--text); font-size: 14px; font-weight: 800; }
+  .field { margin-top: 12px; }
+  .field label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 700; }
+  .field input {
+    width: 100%; min-height: 46px; padding: 0 12px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 600 16px var(--font);
+  }
+  .sheet h3 { margin: 20px 0 0; font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+  .sheet .error { color: var(--text); font-weight: 700; }
+  .sheet .notice { padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .entries { margin: 6px 0 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
+  .entries li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .entries small { display: block; color: var(--muted); font-size: 12px; }
+  .entries b { font-weight: 800; white-space: nowrap; }
+
   .road { position: relative; margin-top: 8px; }
   .road > svg { position: absolute; left: 0; top: 0; overflow: visible; }
   .road > svg path { fill: none; stroke: var(--track); stroke-width: 14; stroke-linecap: round; }
@@ -305,7 +325,8 @@ const DATA = [
       { t: 'Pick one, plan 90 days' }] }] },
   { id: 'money', name: 'Money', dir: 'down', habits: [{ id: 'charts', name: 'Study the charts', streak: 4 }], goals: [
     { id: '100k', name: 'Make KES 100,000', target: { of: 100000 }, paths: [
-      { id: 'remote', name: 'Remote work', earned: 12000, steps: [
+      { id: 'remote', name: 'Remote work', earned: 12000, log: [
+        { amount: 4000, note: 'Data entry job', when: '9 Oct' }, { amount: 8000, note: 'First gig: logo set', when: '3 Oct' }], steps: [
         { t: 'Pick a niche', done: true },
         { t: 'Build profile & samples', done: true },
         { t: 'Apply to 5 gigs a week', tasks: [
@@ -709,6 +730,12 @@ function renderRoad() {
   $('progress').innerHTML = `<div class="progress-row"><b>${done} of ${n} milestones</b>
     <span>${goal.earned !== undefined ? KES(goal.earned) + ' earned' : percent(steps) + '%'}</span></div>
     <span class="bar"><i style="width:${percent(steps)}%"></i></span>`;
+  if (goal.earned !== undefined) {
+    const total = parent.paths.reduce((sum, p) => sum + p.earned, 0);
+    $('progress').innerHTML += `<div class="toward">
+      <span>Counts toward ${parent.name}<b>${KES(total)} of ${parent.target.of.toLocaleString('en-KE')}</b></span>
+      <button class="btn primary" type="button" id="log-open">Log amount</button></div>`;
+  }
 
   const el = $('road'), W = el.clientWidth, H = TOP + n * GAP + 110;
   const p = steps.map((s, i) => ({ x: W * (i % 2 ? 0.74 : 0.26), y: TOP + i * GAP }));
@@ -740,6 +767,42 @@ $('road').addEventListener('click', (e) => {
   const i = e.target.closest('.stop')?.dataset.i;
   if (i !== undefined) openSheet(road.goal, +i);
 });
+// Logging money against the path that earned it.
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function openLog(notice) {
+  const el = $('sheet'), goal = road.goal, entries = goal.log || [];
+  habitsArea = null;
+  el.innerHTML = `<div class="sheet-head">
+      <div><p class="kicker">${goal.name} · ${KES(goal.earned)} earned</p><h2 id="sheet-title">Log amount</h2></div>
+      <button class="icon-btn" type="button" data-act="close" aria-label="Close">✕</button>
+    </div>
+    ${notice ? `<p class="notice" role="status">${notice}</p>` : ''}
+    <form id="log-form" novalidate>
+      <div class="field"><label for="log-amount">Amount in KES</label>
+        <input id="log-amount" type="number" inputmode="numeric" min="1" step="1" placeholder="5000" autocomplete="off"></div>
+      <div class="field"><label for="log-note">Note (optional)</label>
+        <input id="log-note" type="text" maxlength="60" placeholder="What was it for?" autocomplete="off"></div>
+      <p class="error" id="log-error" role="alert" hidden>Enter an amount above zero.</p>
+      <div class="actions"><button class="btn primary" type="submit">Log amount</button></div>
+    </form>
+    <h3>Logged so far</h3>
+    ${entries.length ? `<ul class="entries">${entries.map((x) =>
+      `<li><span>${esc(x.note) || 'No note'}<small>${x.when}</small></span><b>${KES(x.amount)}</b></li>`).join('')}</ul>`
+      : '<p class="muted">Nothing logged on this path yet.</p>'}`;
+  el.hidden = false;
+  el.onchange = null;
+  el.onclick = (e) => { if (e.target.closest('[data-act="close"]')) closeSheet(); };
+  $('log-form').onsubmit = (e) => {
+    e.preventDefault();
+    const amount = Math.floor(Number($('log-amount').value));
+    if (!(amount > 0)) { $('log-error').hidden = false; $('log-amount').focus(); return; }
+    goal.log = [{ amount, note: $('log-note').value.trim(), when: 'Today' }, ...entries];
+    goal.earned += amount;
+    renderRoad();
+    openLog('Logged ' + KES(amount) + '.');
+  };
+}
+$('progress').addEventListener('click', (e) => { if (e.target.closest('#log-open')) openLog(); });
 $('chips').addEventListener('click', (e) => {
   const id = e.target.closest('[data-goal]')?.dataset.goal;
   if (id) openRoad(id, roadFromMap);
