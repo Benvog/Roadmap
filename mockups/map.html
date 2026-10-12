@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Roadmap: branching map (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+  body { overflow: hidden; }
+  #viewport {
+    position: fixed; inset: 0; overflow: hidden; touch-action: none; cursor: grab;
+    background-image: radial-gradient(var(--line) 1.2px, transparent 1.2px);
+  }
+  #viewport.dragging { cursor: grabbing; }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #world.glide { transition: transform .35s ease; }
+  #edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
+  #edges path { fill: none; stroke: var(--line); stroke-width: 2; }
+  #edges path.done { stroke: var(--accent); }
+  #edges path.feeds { stroke: var(--accent); stroke-dasharray: 5 5; }
+  #edges .arrow { fill: var(--accent); stroke: none; }
+
+  .node { position: absolute; transform: translate(-50%, -50%); cursor: pointer; }
+  .node.new { animation: pop .25s ease; }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.85); } }
+  @media (prefers-reduced-motion: reduce) { .node.new { animation: none; } #world.glide { transition: none; } }
+
+  .you {
+    width: 64px; height: 64px; border-radius: 50%; border: 0;
+    background: var(--accent); color: var(--on-accent); font-weight: 800;
+    box-shadow: 0 0 0 8px var(--accent-soft);
+  }
+  .area {
+    width: 92px; height: 92px; border-radius: 50%; border: 0; padding: 5px;
+    background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--track) 0);
+    box-shadow: var(--shadow);
+  }
+  .area .disc {
+    display: grid; place-content: center; width: 100%; height: 100%;
+    border-radius: 50%; background: var(--surface);
+  }
+  .area b { font-size: 14.5px; font-weight: 800; }
+  .area small { color: var(--muted); font-size: 12px; }
+  .area.open { box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+
+  .goal {
+    width: 156px; padding: 9px 11px; border-radius: 14px; text-align: left;
+    background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .goal.open { border-color: var(--accent); }
+  .goal b { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.25; }
+  .goal small { display: block; margin-top: 2px; color: var(--muted); font-size: 11.5px; }
+  .goal .bar { margin-top: 6px; height: 5px; }
+
+  .step {
+    width: 156px; min-height: 44px; padding: 6px 10px 6px 8px; border-radius: 22px;
+    display: flex; gap: 8px; align-items: center; text-align: left;
+    background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; line-height: 1.25;
+  }
+  .step .ic { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; }
+  .step.done .ic { background: var(--accent); color: var(--on-accent); }
+  .step.next { border: 2px solid var(--accent); font-weight: 700; }
+  .step.next .ic { background: var(--accent-soft); color: var(--accent); }
+  .step.todo .ic { border: 1.5px solid var(--muted); }
+  .step.locked { background: var(--bg); border-style: dashed; color: var(--muted); }
+
+  .topbar {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    pointer-events: none;
+  }
+  .topbar > * { pointer-events: auto; }
+  .topbar h1 { margin: 0 auto 0 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .views { display: flex; padding: 3px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+  .views a { padding: 8px 12px; border-radius: 9px; font-size: 13px; font-weight: 700; text-decoration: none; color: var(--muted); }
+  .views a[aria-current] { background: var(--accent-soft); color: var(--accent); }
+
+  .hint {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 5;
+    padding: 8px 14px; border-radius: 999px; white-space: nowrap;
+    background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: 12.5px;
+    box-shadow: var(--shadow); transition: opacity .3s;
+  }
+  .hint.gone { opacity: 0; pointer-events: none; }
+  .zoom { position: fixed; right: 16px; bottom: 70px; z-index: 10; display: grid; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Roadmap</h1>
+  <nav class="views" aria-label="View">
+    <a href="map.html" aria-current="page">Map</a>
+    <a href="areas-map.html">List</a>
+  </nav>
+  <button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark theme"></button>
+</div>
+
+<div id="viewport">
+  <div id="world">
+    <svg id="edges" aria-hidden="true"></svg>
+    <div id="nodes"></div>
+  </div>
+</div>
+
+<div class="zoom">
+  <button class="icon-btn" id="zin" type="button" aria-label="Zoom in">+</button>
+  <button class="icon-btn" id="zout" type="button" aria-label="Zoom out">−</button>
+  <button class="icon-btn" id="home" type="button" aria-label="Back to the centre">◎</button>
+</div>
+<div class="hint" id="hint">Tap an area to explore · drag to move · pinch to zoom</div>
+
+<script src="data.js"></script>
+<script src="base.js"></script>
+<script>
+document.getElementById('theme').innerHTML = ICONS.moon;
+
+// In "both" mode a goal opens its journey road instead of unfolding here.
+const BOTH = PARAMS.get('mode') === 'both';
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const AREA_GAP = 132, GOAL_GAP = 104, SIDE_GAP = 150, SLOT_W = 172, SLOT_H = 76, FIRST_STEP = 78, STEP_GAP = 60;
+
+const vp = document.getElementById('viewport');
+const world = document.getElementById('world');
+const nodesEl = document.getElementById('nodes');
+const edgesEl = document.getElementById('edges');
+const open = new Set((PARAMS.get('open') || '').split(',').filter(Boolean));
+const view = { x: 0, y: 0, k: 1 };
+let byId = {}, seen = new Set();
+
+const goalNode = (g) => ({ id: g.id, type: 'goal', src: g, kids: (g.paths || []).map(goalNode) });
+const tree = DATA.map((a) => ({ id: a.id, type: 'area', src: a, dir: a.dir, kids: a.goals.map(goalNode) }));
+
+function slots(n) {
+  return open.has(n.id) && n.kids.length ? n.kids.reduce((sum, k) => sum + slots(k), 0) : 1;
+}
+
+function layout() {
+  const nodes = [{ id: 'you', type: 'you', x: 0, y: 0 }], edges = [];
+  const place = (n, x, y, dir, parent) => {
+    Object.assign(n, { x, y, dir, parent });
+    nodes.push(n);
+    if (!open.has(n.id)) return;
+    const [dx, dy] = DIRS[dir], vertical = dy !== 0;
+    if (n.kids.length) {
+      let at = -slots(n) / 2;
+      for (const k of n.kids) {
+        const w = slots(k), off = at + w / 2;
+        at += w;
+        const kx = vertical ? x + off * SLOT_W : x + dx * SIDE_GAP;
+        const ky = vertical ? y + dy * GOAL_GAP : y + off * SLOT_H;
+        edges.push({ a: n, b: k, vertical });
+        place(k, kx, ky, dir, n);
+      }
+    } else if (n.src.steps) {
+      // Milestones run in a chain: away from the centre for up/down areas, downwards for side areas.
+      const sy = dir === 'up' ? -1 : 1;
+      let prev = n;
+      n.src.steps.forEach((s, i) => {
+        const step = { id: n.id + '-' + i, type: 'step', goal: n.src, i, x, y: y + sy * (FIRST_STEP + i * STEP_GAP), dir, parent: n };
+        nodes.push(step);
+        edges.push({ a: prev, b: step, vertical: true, done: s.done });
+        prev = step;
+      });
+    }
+  };
+  for (const a of tree) {
+    const [dx, dy] = DIRS[a.dir];
+    edges.push({ a: nodes[0], b: a, straight: true });
+    place(a, dx * AREA_GAP, dy * AREA_GAP, a.dir, nodes[0]);
+  }
+  return { nodes, edges };
+}
+
+function nodeHTML(n) {
+  const at = `style="left:${n.x}px;top:${n.y}px"`;
+  const cls = (seen.has(n.id) ? '' : ' new') + (open.has(n.id) ? ' open' : '');
+  if (n.type === 'you') return `<button class="node you" data-id="you" ${at} aria-label="You. Back to the centre">You</button>`;
+  if (n.type === 'area') {
+    const p = percent(n.src.goals.flatMap(stepsUnder));
+    return `<button class="node area${cls}" data-id="${n.id}" style="left:${n.x}px;top:${n.y}px;--p:${p}" aria-expanded="${open.has(n.id)}">
+      <span class="disc"><b>${n.src.name}</b><small>${n.kids.length ? p + '%' : 'No goals'}</small></span></button>`;
+  }
+  if (n.type === 'goal') {
+    const g = n.src;
+    const bar = g.target ? `<span class="bar"><i style="width:${100 * g.paths.reduce((s, p) => s + p.earned, 0) / g.target.of}%"></i></span>` : '';
+    return `<button class="node goal${cls}" data-id="${n.id}" ${at} aria-expanded="${open.has(n.id)}"><b>${g.name}</b><small>${goalSub(g)}</small>${bar}</button>`;
+  }
+  const state = stepState(n.goal, n.i);
+  const icon = { done: ICONS.check, next: ICONS.dot, locked: ICONS.lock, todo: '' }[state];
+  return `<button class="node step ${state}${cls}" data-id="${n.id}" ${at} aria-label="${n.goal.steps[n.i].t}: ${STATE_LABEL[state]}">
+    <span class="ic">${icon}</span><span>${n.goal.steps[n.i].t}</span></button>`;
+}
+
+function edgePath(e) {
+  const { a, b } = e;
+  if (e.straight) return `M${a.x},${a.y} L${b.x},${b.y}`;
+  if (e.vertical) { const m = (a.y + b.y) / 2; return `M${a.x},${a.y} C${a.x},${m} ${b.x},${m} ${b.x},${b.y}`; }
+  const m = (a.x + b.x) / 2;
+  return `M${a.x},${a.y} C${m},${a.y} ${m},${b.y} ${b.x},${b.y}`;
+}
+
+function render() {
+  const focused = document.activeElement?.dataset?.id;
+  const { nodes, edges } = layout();
+  byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  let svg = edges.map((e) => `<path class="${e.done ? 'done' : ''}" d="${edgePath(e)}"/>`).join('');
+
+  // Remote work feeds the trading deposit: drawn when both milestones are showing.
+  const from = byId['remote-3'], to = byId['trading-2'];
+  if (from && to) {
+    const x1 = from.x + 78, x2 = to.x - 78 - 7;
+    svg += `<path class="feeds" d="M${x1},${from.y} C${x1 + 14},${from.y} ${x2 - 14},${to.y} ${x2},${to.y}"/>
+      <path class="arrow" d="M${x2 - 1},${to.y - 5} l8,5 -8,5z"/>`;
+  }
+  edgesEl.innerHTML = svg;
+  nodesEl.innerHTML = nodes.map(nodeHTML).join('');
+  seen = new Set(nodes.map((n) => n.id));
+  if (focused) nodesEl.querySelector(`[data-id="${focused}"]`)?.focus({ preventScroll: true });
+}
+
+function apply(glide) {
+  world.classList.toggle('glide', !!glide);
+  world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.k})`;
+  vp.style.backgroundSize = `${26 * view.k}px ${26 * view.k}px`;
+  vp.style.backgroundPosition = `${view.x}px ${view.y}px`;
+}
+function centre(glide) {
+  Object.assign(view, { x: innerWidth / 2, y: innerHeight * 0.45, k: 1 });
+  apply(glide);
+}
+// Bring a node on screen with room for what unfolds from it.
+function focusOn(n) {
+  const w = innerWidth, h = innerHeight;
+  const anchor = n.type === 'area'
+    ? { down: [w / 2, 140], up: [w / 2, h - 130], right: [84, 150], left: [w - 84, h / 2] }[n.dir]
+    : n.dir === 'up' ? [w / 2, h - 200] : [w / 2, 230];
+  const x = n.parent?.src?.target ? n.parent.x : n.x;
+  view.x = anchor[0] - x * view.k;
+  view.y = anchor[1] - n.y * view.k;
+  if (n.type === 'area' && n.dir === 'right') view.x = 84 - n.x * view.k;
+  apply(true);
+}
+function zoomAt(k, cx, cy) {
+  k = Math.min(2.2, Math.max(0.45, k));
+  const wx = (cx - view.x) / view.k, wy = (cy - view.y) / view.k;
+  Object.assign(view, { k, x: cx - wx * k, y: cy - wy * k });
+}
+
+nodesEl.addEventListener('click', (e) => {
+  const n = byId[e.target.closest('.node')?.dataset.id];
+  if (!n) return;
+  document.getElementById('hint').classList.add('gone');
+  if (n.type === 'you') return centre(true);
+  if (n.type === 'step') return openSheet(n.goal, n.i, render);
+  closeSheet();
+  if (n.type === 'goal' && BOTH && n.src.steps) { location.href = `road.html?goal=${n.id}&from=map`; return; }
+  if (n.type === 'area' && !n.kids.length) { const hint = document.getElementById('hint'); hint.textContent = 'No goals in ' + n.src.name + ' yet. Here you would add one.'; hint.classList.remove('gone'); return; }
+  if (open.has(n.id)) open.delete(n.id); else open.add(n.id);
+  render();
+  if (open.has(n.id)) focusOn(byId[n.id]);
+});
+
+// Drag to pan, pinch or wheel to zoom.
+const pts = new Map();
+let drag = null, pinch = null, moved = false;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+vp.addEventListener('pointerdown', (e) => {
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pts.size === 1) { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; moved = false; }
+  if (pts.size === 2) {
+    const [a, b] = [...pts.values()];
+    pinch = { d: dist(a, b), k: view.k, wx: ((a.x + b.x) / 2 - view.x) / view.k, wy: ((a.y + b.y) / 2 - view.y) / view.k };
+    moved = true;
+  }
+});
+addEventListener('pointermove', (e) => {
+  if (!pts.has(e.pointerId)) return;
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && pts.size === 2) {
+    const [a, b] = [...pts.values()];
+    const k = Math.min(2.2, Math.max(0.45, pinch.k * dist(a, b) / pinch.d));
+    Object.assign(view, { k, x: (a.x + b.x) / 2 - pinch.wx * k, y: (a.y + b.y) / 2 - pinch.wy * k });
+    apply();
+  } else if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.hypot(dx, dy) > 6) moved = true;
+    if (moved) { view.x = drag.vx + dx; view.y = drag.vy + dy; vp.classList.add('dragging'); apply(); }
+  }
+});
+const lift = (e) => {
+  pts.delete(e.pointerId);
+  pinch = null;
+  const rest = [...pts.values()][0];
+  drag = rest ? { x: rest.x, y: rest.y, vx: view.x, vy: view.y } : null;
+  vp.classList.remove('dragging');
+};
+addEventListener('pointerup', lift);
+addEventListener('pointercancel', lift);
+vp.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+vp.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  zoomAt(view.k * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+  apply();
+}, { passive: false });
+document.getElementById('zin').onclick = () => { zoomAt(view.k * 1.25, innerWidth / 2, innerHeight / 2); apply(true); };
+document.getElementById('zout').onclick = () => { zoomAt(view.k / 1.25, innerWidth / 2, innerHeight / 2); apply(true); };
+document.getElementById('home').onclick = () => centre(true);
+
+// Keyboard: when a node off screen takes focus, bring it into view.
+nodesEl.addEventListener('focusin', (e) => {
+  vp.scrollTo(0, 0);
+  const r = e.target.getBoundingClientRect();
+  if (r.left < 0 || r.top < 60 || r.right > innerWidth || r.bottom > innerHeight) {
+    const n = byId[e.target.dataset.id];
+    view.x = innerWidth / 2 - n.x * view.k;
+    view.y = innerHeight / 2 - n.y * view.k;
+    apply(true);
+  }
+});
+
+render();
+centre();
+if (PARAMS.get('focus')) { document.getElementById('hint').classList.add('gone'); focusOn(byId[PARAMS.get('focus')]); }
+if (PARAMS.get('sheet')) { const [g, i] = PARAMS.get('sheet').split(':'); openSheet(findGoal(g).goal, +i, render); }
+</script>
+</body>
+</html>

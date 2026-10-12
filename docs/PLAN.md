@@ -3,9 +3,10 @@
 One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD.md` for scope.
 
 ## Phase 1: Design (mockups, no app code)
-- [ ] Areas map home screen (phone width, light + dark)
-- [ ] Area screen: goals, milestones, tasks, habits
-- [ ] Target screen: KES 100,000 with paths, funding target, locked milestone
+- [x] Areas map home screen (phone width, light + dark): list version mocked in `mockups/areas-map.html`, kept as the List view
+- [x] Choose the explorable map style from `mockups/index.html`: chose both (branching map home, journey road per goal)
+- [ ] Habits: where they show on the map and the road, and how to check in
+- [ ] Target view: how the KES 100,000 total and the amounts logged per path show (paths, funding and the locked milestone are already mocked)
 - [ ] Add/edit flows: area, goal, milestone, task, habit, logging an amount
 - [ ] Settle look: colours, type, name and icon; write them into CLAUDE.md
 
@@ -16,8 +17,9 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [ ] `js/store.js` data layer
 
 ## Phase 3: Core app
-- [ ] Areas map: list, add, rename, reorder, remove; progress per area
-- [ ] Goals → milestones → tasks with roll-up progress and due dates
+- [ ] Branching map home: pan and zoom, unfold areas and goals; add, rename, reorder, remove areas; progress per area
+- [ ] Journey road per goal: milestones as stops, tasks in the milestone sheet, roll-up progress and due dates
+- [ ] List view of areas
 - [ ] Habits with check-ins and streak counts
 
 ## Phase 4: Targets and paths

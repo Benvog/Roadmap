@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap: areas map (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6f4;
+    --surface: #ffffff;
+    --line: #d5dcd8;
+    --text: #15201c;
+    --muted: #55625c;
+    --accent: #0b7a5e;
+    --accent-soft: #e2f1ec;
+    --track: #e3e8e5;
+    --shadow: 0 1px 2px rgba(21, 32, 28, .06), 0 6px 16px rgba(21, 32, 28, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1312;
+      --surface: #171d1b;
+      --line: #2b3531;
+      --text: #e9efec;
+      --muted: #9daaa4;
+      --accent: #45d1a6;
+      --accent-soft: #16302a;
+      --track: #28312e;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1312;
+    --surface: #171d1b;
+    --line: #2b3531;
+    --text: #e9efec;
+    --muted: #9daaa4;
+    --accent: #45d1a6;
+    --accent-soft: #16302a;
+    --track: #28312e;
+    --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 500 15px/1.4 Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 460px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+  .date { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .icon-btn {
+    width: 44px; height: 44px; display: grid; place-items: center;
+    border: 1px solid var(--line); border-radius: 12px;
+    background: var(--surface); color: var(--text); cursor: pointer;
+  }
+  .icon-btn svg { width: 20px; height: 20px; }
+
+  .summary {
+    display: flex; gap: 8px; margin: 18px 0 22px; padding: 0; list-style: none;
+  }
+  .summary li {
+    flex: 1; padding: 10px 12px; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--line);
+  }
+  .summary b { display: block; font-size: 18px; font-weight: 800; }
+  .summary span { color: var(--muted); font-size: 12.5px; }
+
+  h2 {
+    margin: 0 0 12px; font-size: 13px; font-weight: 700; color: var(--muted);
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+
+  /* The route: areas are stops along a dashed line */
+  .route { position: relative; margin: 0; padding: 0; list-style: none; }
+  .route::before {
+    content: ""; position: absolute; left: 27px; top: 28px; bottom: 28px;
+    border-left: 2px dashed var(--line);
+  }
+  .stop { position: relative; margin-bottom: 14px; }
+  .stop > a, .add {
+    display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: start;
+    color: inherit; text-decoration: none; border-radius: 16px;
+  }
+  .ring { position: relative; width: 56px; height: 56px; border-radius: 50%; background: var(--bg); }
+  .ring svg { width: 56px; height: 56px; transform: rotate(-90deg); display: block; }
+  .ring circle { fill: var(--surface); stroke: var(--track); stroke-width: 5; }
+  .ring circle.value { fill: none; stroke: var(--accent); stroke-linecap: round; }
+  .ring b {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 13px; font-weight: 800;
+  }
+
+  .card {
+    display: block; padding: 14px 14px 12px; border-radius: 16px;
+    background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .name { font-size: 17px; font-weight: 700; }
+  .meta { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+
+  .target { display: block; margin-top: 10px; }
+  .target-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+  .target-row .amount { font-weight: 700; }
+  .target-row .of { color: var(--muted); }
+  .bar { display: block; height: 6px; margin-top: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+
+  .next {
+    display: flex; gap: 8px; align-items: flex-start; margin-top: 10px;
+    padding: 8px 10px; border-radius: 10px; background: var(--accent-soft); font-size: 13.5px;
+  }
+  .next .label {
+    flex: none; color: var(--accent); font-size: 11.5px; font-weight: 800;
+    letter-spacing: .05em; text-transform: uppercase; padding-top: 2px;
+  }
+  .habits { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--muted); font-size: 12.5px; }
+  .dots { display: inline-flex; gap: 4px; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); }
+  .dots i.done { background: var(--accent); border-color: var(--accent); }
+
+  .add { width: 100%; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; align-items: center; text-align: left; }
+  .add .plus {
+    width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--bg); border: 2px dashed var(--line); color: var(--accent);
+  }
+  .add .plus svg { width: 22px; height: 22px; }
+  .add span:last-child { color: var(--accent); font-weight: 700; }
+
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .note { margin-top: 26px; color: var(--muted); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Roadmap</h1>
+      <p class="date">Monday 12 October</p>
+    </div>
+    <button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+  </header>
+
+  <ul class="summary" aria-label="Overview">
+    <li><b>4</b><span>areas</span></li>
+    <li><b>5</b><span>active goals</span></li>
+    <li><b>1 / 4</b><span>habits today</span></li>
+  </ul>
+
+  <h2 id="areas-h">Your areas</h2>
+  <ol class="route" aria-labelledby="areas-h">
+
+    <li class="stop">
+      <a href="#money" aria-label="Money, 12 percent complete">
+        <span class="ring">
+          <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24"/><circle class="value" cx="28" cy="28" r="24" pathLength="100" stroke-dasharray="12 100"/></svg>
+          <b>12%</b>
+        </span>
+        <span class="card">
+          <span class="top"><span class="name">Money</span><span class="meta">3 goals · 1 habit</span></span>
+          <span class="target">
+            <span class="target-row"><span class="amount">KES 12,000</span><span class="of">of KES 100,000 · by Oct 2027</span></span>
+            <span class="bar"><i style="width:12%"></i></span>
+          </span>
+          <span class="next"><span class="label">Next</span><span>Apply to 5 remote gigs this week</span></span>
+          <span class="habits"><span class="dots"><i></i></span>Study the charts · not done yet today</span>
+        </span>
+      </a>
+    </li>
+
+    <li class="stop">
+      <a href="#career" aria-label="Career, 25 percent complete">
+        <span class="ring">
+          <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24"/><circle class="value" cx="28" cy="28" r="24" pathLength="100" stroke-dasharray="25 100"/></svg>
+          <b>25%</b>
+        </span>
+        <span class="card">
+          <span class="top"><span class="name">Career</span><span class="meta">1 goal</span></span>
+          <span class="next"><span class="label">Next</span><span>Shortlist 3 avenues in my field and research each</span></span>
+        </span>
+      </a>
+    </li>
+
+    <li class="stop">
+      <a href="#health" aria-label="Health, 40 percent complete">
+        <span class="ring">
+          <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24"/><circle class="value" cx="28" cy="28" r="24" pathLength="100" stroke-dasharray="40 100"/></svg>
+          <b>40%</b>
+        </span>
+        <span class="card">
+          <span class="top"><span class="name">Health</span><span class="meta">1 goal · 2 habits</span></span>
+          <span class="next"><span class="label">Next</span><span>Run 3 km without stopping</span></span>
+          <span class="habits"><span class="dots"><i class="done"></i><i></i></span>1 of 2 habits done today</span>
+        </span>
+      </a>
+    </li>
+
+    <li class="stop">
+      <a href="#mental" aria-label="Mental, no goals yet">
+        <span class="ring">
+          <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24"/></svg>
+          <b>0%</b>
+        </span>
+        <span class="card">
+          <span class="top"><span class="name">Mental</span><span class="meta">No goals yet · 1 habit</span></span>
+          <span class="habits"><span class="dots"><i></i></span>Journal for 10 minutes · not done yet today</span>
+        </span>
+      </a>
+    </li>
+
+    <li class="stop">
+      <button class="add" type="button">
+        <span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span>Add an area</span>
+      </button>
+    </li>
+  </ol>
+
+  <p class="note">Mockup with sample data. Nothing here saves yet.</p>
+</div>
+<script>
+  const root = document.documentElement;
+  const param = new URLSearchParams(location.search).get('theme');
+  if (param) root.dataset.theme = param;
+  document.getElementById('theme').addEventListener('click', () => {
+    const dark = root.dataset.theme
+      ? root.dataset.theme === 'dark'
+      : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+  });
+</script>
+</body>
+</html>

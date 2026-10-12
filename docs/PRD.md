@@ -10,7 +10,7 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 
 ## Must-haves
 <3 to 7 features: the smallest version worth having.>
-1. Life areas map as the home screen, each showing its progress. Areas are my own: I can add, rename, reorder and remove them (starting with Career, Money, Health, Mental). Every area works the same way: goals, milestones, tasks, habits and targets.
+1. Life areas map as the home screen: an explorable branching map (drag, pinch to zoom) with me in the middle and areas around, each showing its progress. Tapping an area unfolds its goals, a target unfolds its paths, and tapping a goal opens its journey road: milestones as stops along a winding road with a "you are here" marker. A plain list of areas stays as a second view. Areas are my own: I can add, rename, reorder and remove them (starting with Career, Money, Health, Mental). Every area works the same way: goals, milestones, tasks, habits and targets.
 2. Inside each area: Goals → Milestones → Tasks, with progress rolling up from tasks.
 3. Recurring habits per area, with check-ins.
 4. Works well on a phone; installable to the home screen.
@@ -41,7 +41,7 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 
 ## Open questions
 <What isn't decided yet. Remove each one once it's answered.>
-- None yet.
+- Where habits show on the map and the road.
 
 ## Decisions
 - 2026-10-07: Life-areas map (not goal-only or timeline). Hierarchy Area → Goal → Milestone → Task, plus habits per area.
@@ -50,3 +50,4 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 - 2026-10-07: v1 keeps due dates; skips reminders, charts/history and sharing.
 - 2026-10-07: Big targets with linked paths: goals can have a number target, log amounts, and feed or unlock other goals.
 - 2026-10-07: Currency is KES. Funding targets (like the trading deposit) fill from any source, not only a linked path.
+- 2026-10-12: Map style is "both": branching map as home, each goal opens as a journey road. Chosen from interactive mockups in `mockups/`; the areas list is kept as a List view.
