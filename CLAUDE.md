@@ -28,7 +28,7 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - Keep this file, the PLAN and the PRD's Decisions current at each step.
 
 ## Mockups
-- `mockups/prototype.html` is the interactive prototype (options, branching map, journey road, habits) with sample data.
+- `mockups/prototype.html` is the interactive prototype (branching map, journey roads, habits, logging, add flows) with sample data. It opens straight on the map.
   Open it in a browser, or serve the repo and open `/mockups/prototype.html`.
 - The same page is published privately for phone testing at https://claude.ai/artifact/KC5KC9HxN1Eziw3dtz1DLM.
   To update it, publish the file without its first two lines (the doctype and `<html>`/meta line) to that URL.
