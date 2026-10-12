@@ -12,9 +12,9 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 <3 to 7 features: the smallest version worth having.>
 1. Life areas map as the home screen: an explorable branching map (drag, pinch to zoom) with me in the middle and areas around, each showing its progress. Tapping an area unfolds its goals, a target unfolds its paths, and tapping a goal opens its journey road: milestones as stops along a winding road with a "you are here" marker. A plain list of areas stays as a second view. Areas are my own: I can add, rename, reorder and remove them (starting with Career, Money, Health, Mental). Every area works the same way: goals, milestones, tasks, habits and targets.
 2. Inside each area: Goals → Milestones → Tasks, with progress rolling up from tasks.
-3. Recurring habits per area, with check-ins.
+3. Recurring habits per area, daily or a number of times a week, with check-ins.
 4. Works well on a phone; installable to the home screen.
-5. Data syncs across devices, private to me (login).
+5. Data syncs across devices, private to me (login). With no connection the last loaded map can still be opened and read.
 6. Optional due dates on goals, milestones and tasks.
 7. Targets and paths: a goal can have a number target (e.g. 100,000 in 12 months); other goals plug in as paths, log amounts toward it, and can feed or unlock each other. A milestone can have its own funding target (e.g. the trading deposit) that fills from any source: a linked path like remote work, or money logged from elsewhere (a gift, savings). Each path shows its next step.
 
@@ -22,6 +22,7 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 - Reminders and notifications.
 - Charts and history (streak calendars, progress over time); v1 shows current progress and streak counts only.
 - Sharing with other people.
+- Changing things while offline (ticking, logging); only viewing works without a connection.
 
 ## Done looks like
 - On my phone I can sign in, add the app to my home screen, and see my areas with their progress.
@@ -60,3 +61,4 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 - 2026-10-12: Typeface stays Manrope, kept over Bricolage Grotesque, Plus Jakarta Sans, Outfit and a headings-only mix.
 - 2026-10-12: The app is called Vektor.
 - 2026-10-12: The icon is a node with three branches, like You and the areas on the map.
+- 2026-10-12: Data model approved (`docs/DATA-MODEL.md`). Habits can be daily or a number of times a week. Offline: view only; changes need a connection.

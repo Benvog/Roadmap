@@ -18,16 +18,17 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
   - [x] Icon: a node with three branches (You and your areas), dark on an amber tile, saved as `assets/icon.svg`; the four options are in `mockups/icons.html`
 
 ## Phase 2: Data and setup
-- [ ] Data model (tables and links) written here and approved
+- [x] Data model (tables and links): approved, in `docs/DATA-MODEL.md`
 - [ ] Create Supabase project; tables + row-level security
 - [ ] Magic-link sign-in working locally
 - [ ] `js/store.js` data layer
+- [ ] View offline: keep a copy of the last loaded data on the device and show it, read-only, with an "offline" note when there is no connection
 
 ## Phase 3: Core app
 - [ ] Branching map home: pan and zoom, unfold areas and goals; add, rename, reorder, remove areas; progress per area
 - [ ] Journey road per goal: milestones as stops, tasks in the milestone sheet, roll-up progress and due dates
 - [ ] List view of areas
-- [ ] Habits with check-ins and streak counts
+- [ ] Habits with check-ins and streak counts, daily or a number of times a week (with a "how often" choice in the add and edit forms)
 
 ## Phase 4: Targets and paths
 - [ ] Number targets on goals; log amounts with a note
