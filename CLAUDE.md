@@ -7,8 +7,9 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 ## Where things stand (2026-10-12)
 - Phase 1 (design) is done: every screen and behaviour is decided and mocked in `mockups/prototype.html`.
 - Phase 2 (data and setup) is done except view-offline, which waits until a screen shows real data.
-- The real app so far is sign-in plus the data layer. The signed-in screen is a placeholder.
-- Next: Phase 3, the real map, in slices: You and areas; goals, targets and paths; a goal's road with milestones
+- The real app so far is sign-in, the data layer, and slice 1 of the map: You and your areas (add, rename, move,
+  delete), saved to Supabase.
+- Phase 3 goes in slices: You and areas (built); goals, targets and paths; a goal's road with milestones
   and tasks; habits; then logging and funding. Port behaviour from the prototype, do not redesign it.
 
 ## Stack
@@ -22,7 +23,13 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 
 ## Files
 - `index.html`, `css/app.css`: the app shell and styles. Tokens at the top of `app.css` match "Look" below.
-- `js/main.js`: starts the app and draws the sign-in and signed-in screens.
+- `js/main.js`: starts the app, draws the sign-in screens, and hands over to `js/app.js` once there is a user.
+- `js/app.js`: the signed-in app. `startApp(root, user, store)` loads the data, runs the map and handles adding and
+  editing. The store is passed in, so tests can run the real app with a stand-in.
+- `js/map.js`: the map itself (layout, the opening motion, the camera, pan and zoom). It only draws and reports taps.
+- `js/ui.js`: `esc`, icons, and the bottom sheet with its forms (`openForm`).
+- `tests/`: `run.sh` runs `drive.html`, which drives the real app through `app.html` using `fake-store.js`
+  (an in-memory stand-in for `store.js`). `tests/app.html` can also be opened by hand to see the app without signing in.
 - `js/store.js`: the only module that talks to Supabase. Sign-in functions, then `loadAll`, `add`, `update`,
   `remove`, `checkIn`, `undoCheckIn`. `loadAll` returns flat lists keyed by table name; nothing computes totals yet.
 - `js/config.js`: the Supabase project URL and publishable key. Both are public by design.
@@ -43,8 +50,12 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - Supabase's built-in email only sends a few sign-in emails an hour.
 
 ## Testing
-- There is no test suite yet. Every step is checked by loading the app in headless Edge
-  (`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --headless=new`).
+- `bash tests/run.sh` (Git Bash) runs the real app in headless Edge against a stand-in store and prints what each
+  scenario saw. It starts and stops its own server and browser, and exits 1 on a problem. Add steps to
+  `tests/drive.html` for each new slice, and run it before every commit.
+- Headless Edge is `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --headless=new`.
+- A Bash command that contains a backtick inside a heredoc fails to parse in this tool. Write files that contain
+  JavaScript template strings with the Write tool instead.
 - Headless Edge will not go narrower than about 500px. For a phone-width screenshot, load the page in a
   390px-wide iframe from a small same-origin wrapper page and screenshot that.
 - `--virtual-time-budget` with `--dump-dom` is unreliable for this app: it sometimes dumps before the page
@@ -63,7 +74,7 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - Light and dark themes; accent colour for actions, selection and highlights only.
 - Money shows as `KES 100,000`. Targets can also count non-money things (books, kg).
 - All Supabase calls go through `js/store.js` so the data layer can change in one place.
-- Anything a user typed is escaped before it goes into HTML (see `esc` in `js/main.js`).
+- Anything a user typed is escaped before it goes into HTML (`esc` in `js/ui.js`). `openForm` and `sheetHead` escape what they are given.
 - Habits are daily or a number of times a week (`times_per_week`, 7 means daily). The prototype's habit
   forms do not have the "how often" choice yet; the real forms need it.
 - Offline is view-only: the last loaded data is kept on the device and shown with an "offline" note;

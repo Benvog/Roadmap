@@ -1,8 +1,12 @@
-// Starts the app: shows the sign-in screen, or the signed-in screen once there is a user.
+// Starts the app: shows the sign-in screen, or the map once there is a user.
 import * as store from './store.js';
+import { startApp } from './app.js';
+import { esc } from './ui.js';
+
+// A theme the person picked with the moon button wins over the system setting.
+try { const theme = localStorage.getItem('theme'); if (theme) document.documentElement.dataset.theme = theme; } catch (err) { /* follow the system */ }
 
 const app = document.getElementById('app');
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const brand = '<div class="brand"><img src="assets/icon.svg" alt=""><b>Vektor</b></div>';
 
 // Supabase puts a message in the address when a sign-in link is expired or already used.
@@ -64,27 +68,18 @@ function showLinkSent(address) {
   document.getElementById('other-email').addEventListener('click', () => showSignIn({ email: address }));
 }
 
-// Placeholder until the map is built.
-function showSignedIn(user) {
-  app.innerHTML = `<div class="gate"><div class="card">
-    ${brand}
-    <h1>You're signed in</h1>
-    <p>As <span class="email">${esc(user.email)}</span>.</p>
-    <p class="muted">Your map goes here next.</p>
-    <button class="btn wide" type="button" id="sign-out">Sign out</button>
-  </div></div>`;
-  document.getElementById('sign-out').addEventListener('click', () => store.signOut());
-}
-
+let stopApp = null;   // stops the running map when the person signs out
 let shownFor;   // the user id on screen, so a repeated sign-in event doesn't redraw it
 function show(user) {
   if (user) {
     if (shownFor === user.id) return;
     shownFor = user.id;
-    showSignedIn(user);
+    stopApp = startApp(app, user, store);
   } else {
     if (shownFor === null) return;
     shownFor = null;
+    stopApp?.();
+    stopApp = null;
     showSignIn({ error: linkError() });
   }
 }

@@ -25,7 +25,8 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [ ] View offline (do this after the map shows real data, so it can be seen and tested): keep a copy of the last loaded data on the device and show it, read-only, with an "offline" note when there is no connection
 
 ## Phase 3: Core app
-- [ ] Branching map home: pan and zoom, unfold areas and goals; add, rename, reorder, remove areas; progress per area
+- [x] Branching map home, slice 1: You and areas on real data (pan, zoom, the opening motion and zoom camera; add, rename, move and delete areas; a starter set for an empty map). Passing `tests/run.sh` and tried signed in on the PC on 2026-10-12
+- [ ] Branching map home, slice 2: goals, targets and paths inside an area, and progress per area
 - [ ] Journey road per goal: milestones as stops, tasks in the milestone sheet, roll-up progress and due dates
 - [ ] List view of areas
 - [ ] Habits with check-ins and streak counts, daily or a number of times a week (with a "how often" choice in the add and edit forms)

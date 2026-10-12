@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vektor test page</title>
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<!--
+  Runs the real app with a stand-in store (tests/fake-store.js): no sign-in, nothing saved.
+  ?areas=empty   start with no areas (the default is Career, Health, Money, Mental)
+  ?fail=1        every load and save fails, like having no connection
+  ?theme=dark    or light
+-->
+<main id="app"></main>
+<script type="module">
+import { startApp } from '../js/app.js';
+import { createFakeStore } from './fake-store.js';
+
+const params = new URLSearchParams(location.search);
+if (params.get('theme')) document.documentElement.dataset.theme = params.get('theme');
+const store = createFakeStore({
+  areas: params.get('areas') === 'empty' ? [] : ['Career', 'Health', 'Money', 'Mental'],
+  failing: params.get('fail') === '1',
+});
+window.fakeStore = store;
+window.stopApp = startApp(document.getElementById('app'), { id: 'fake-user', email: 'you@example.com' }, store);
+</script>
+</body>
+</html>

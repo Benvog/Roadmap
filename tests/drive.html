@@ -1,0 +1,81 @@
+<!doctype html><body style="margin:0;background:#888"><iframe id="f" style="width:390px;height:844px;border:0;display:block"></iframe>
+<script>
+const f = document.getElementById('f'), run = new URLSearchParams(location.search).get('run');
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const report = (name, lines) => fetch('/__result?run=' + run + '&name=' + name + '&log=' + encodeURIComponent(lines.join(' ## ')));
+async function open(query) {
+  const loaded = new Promise((r) => f.addEventListener('load', r, { once: true }));
+  f.src = '/tests/app.html' + query;
+  await loaded;
+  const d = f.contentDocument, w = f.contentWindow, errors = [];
+  w.addEventListener('error', (e) => errors.push(e.message));
+  w.addEventListener('unhandledrejection', (e) => errors.push('rejection: ' + (e.reason?.message || e.reason)));
+  for (let i = 0; i < 50 && !d.querySelector('.node, .card'); i++) await wait(100);
+  const q = (sel) => d.querySelector(sel);
+  const tap = (sel) => { const el = q(sel); if (!el) throw new Error('nothing matches ' + sel); el.click(); };
+  const node = (id) => '[data-id="' + id + '"]:not(.leaving)';
+  const ids = () => [...d.querySelectorAll('.node:not(.leaving)')].map((n) => n.dataset.id.replace(/fake-(\d+)/, 'a$1')).join(' ');
+  const areas = () => [...d.querySelectorAll('.area:not(.leaving) b')].map((b) => b.textContent).join(',');
+  const zoom = () => q('#world').style.transform.match(/scale\(([^)]+)\)/)?.[1];
+  const sheet = () => { const s = q('.sheet'); return s && !s.hidden ? s : null; };
+  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, store: w.fakeStore };
+}
+async function scenario(name, query, steps) {
+  const log = [];
+  try {
+    const t = await open(query);
+    await steps(t, (label, value) => log.push(label + ': ' + value));
+    log.push('script errors: ' + (t.errors.join(' | ') || 'none'));
+    log.push('page overflow: ' + (t.d.documentElement.scrollWidth > 390));
+  } catch (e) { log.push('ERROR ' + e.message); }
+  await report(name, log);
+}
+(async () => {
+  await scenario('areas', '?theme=light', async (t, say) => {
+    say('start', t.ids() + ' | hint: ' + t.q('#hint').textContent + ' | You pulsing: ' + t.q('.you').classList.contains('closed') + ' | zoom ' + t.zoom());
+    t.tap(t.node('you')); await wait(1300);
+    say('You opened', t.areas() + ' | + area: ' + !!t.q(t.node('add-area')) + ' | hidden nodes: ' + [...t.d.querySelectorAll('.node')].filter((n) => n.style.visibility).length + ' | zoom ' + t.zoom());
+    const first = t.q('.area').dataset.id;
+    t.tap(t.node(first)); await wait(900);
+    say('area opened', 'pencil: ' + !!t.q(t.node(first + '-edit')) + ' | zoom ' + t.zoom());
+    t.tap(t.node(first + '-edit'));
+    say('edit form', t.sheet().querySelector('h2').textContent + ' = ' + t.q('#f-name').value);
+    t.q('#f-name').value = 'Work & <b>career</b>'; t.tap('#sheet-form [type=submit]'); await wait(700);
+    say('renamed', t.areas() + ' | sheet closed: ' + !t.sheet() + ' | tags in name stayed text: ' + !t.q('.area b b'));
+    t.tap(t.node(first + '-edit')); t.tap('[data-extra="0"]'); await wait(900);
+    say('moved clockwise', t.areas() + ' | saved order: ' + t.store.rows('areas').slice().sort((a, b) => a.position - b.position).map((r) => r.name[0]).join('') + ' | sheet still open: ' + !!t.sheet());
+    t.tap('[data-act="close"]');
+    t.tap(t.node('add-area')); t.tap('#sheet-form [type=submit]');
+    say('empty name', t.q('#sheet-error').textContent + ' (shown ' + !t.q('#sheet-error').hidden + ')');
+    t.q('#f-name').value = 'Learning'; t.tap('#sheet-form [type=submit]'); await wait(1300);
+    say('added', t.areas() + ' | rows in store: ' + t.store.rows('areas').length);
+    t.store.failing = true;
+    t.tap(t.node('add-area')); t.q('#f-name').value = 'Faith'; t.tap('#sheet-form [type=submit]'); await wait(400);
+    say('save fails', t.q('#sheet-error').textContent + ' | form still open: ' + !!t.sheet() + ' | button usable again: ' + !t.q('#sheet-form [type=submit]').disabled + ' | areas: ' + t.areas());
+    t.store.failing = false; t.tap('[data-act="close"]');
+    const last = [...t.d.querySelectorAll('.area')].pop().dataset.id;
+    t.tap(t.node(last)); await wait(900); t.tap(t.node(last + '-edit')); t.tap('[data-act="ask-delete"]');
+    say('delete asks', t.q('#sheet-danger p').textContent);
+    t.tap('[data-act="keep"]'); say('keep it', 'back to: ' + t.q('#sheet-danger').textContent.trim());
+    t.tap('[data-act="ask-delete"]'); t.tap('[data-act="delete"]'); await wait(1200);
+    say('deleted', t.areas() + ' | rows in store: ' + t.store.rows('areas').length + ' | zoom ' + t.zoom());
+    t.tap(t.node('you')); await wait(900);
+    say('folded', t.ids() + ' | pulsing: ' + t.q('.you').classList.contains('closed'));
+    t.tap('#theme'); say('theme button', t.d.documentElement.dataset.theme);
+    t.tap('#account'); say('account', t.sheet().textContent.replace(/\s+/g, ' ').trim());
+    t.tap('[data-act="sign-out"]'); await wait(100); say('sign out called', t.store.signedOut);
+    say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
+  });
+  await scenario('empty', '?areas=empty', async (t, say) => {
+    say('notice', !t.q('#starter').hidden + ' | ' + t.q('#starter p').textContent);
+    t.tap('#add-starters'); await wait(1800);
+    say('after starters', t.areas() + ' | notice hidden: ' + t.q('#starter').hidden + ' | zoom ' + t.zoom());
+  });
+  await scenario('offline', '?fail=1', async (t, say) => {
+    say('load fails', t.q('.card h1')?.textContent);
+    t.store.failing = false; t.tap('#retry'); await wait(600);
+    say('after retry', t.ids());
+  });
+  await report('done', ['finished']);
+})();
+</script></body>
