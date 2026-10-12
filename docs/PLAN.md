@@ -22,7 +22,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [x] Create Supabase project; tables + row-level security (`supabase/schema.sql` run on 2026-10-12; project details in `js/config.js`)
 - [x] Magic-link sign-in working locally (`index.html`, `css/app.css`, `js/main.js`, `js/store.js`). Signed in on the PC on 2026-10-12, and a signed-in database check passed: own rows save and read back, a row under another login and a goal under a foreign area are refused, and deleting an area removes its goal
 - [x] `js/store.js` data layer (`loadAll`, `add`, `update`, `remove`, `checkIn`, `undoCheckIn`). A signed-in check passed on 2026-10-12: one of everything saved, loaded back linked, edited, and removed by deleting its area
-- [ ] View offline: keep a copy of the last loaded data on the device and show it, read-only, with an "offline" note when there is no connection
+- [ ] View offline (do this after the map shows real data, so it can be seen and tested): keep a copy of the last loaded data on the device and show it, read-only, with an "offline" note when there is no connection
 
 ## Phase 3: Core app
 - [ ] Branching map home: pan and zoom, unfold areas and goals; add, rename, reorder, remove areas; progress per area

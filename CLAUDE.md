@@ -4,51 +4,112 @@ A personal life-areas roadmap: areas → goals → milestones → tasks, habits 
 (e.g. KES 100,000 in 12 months) fed by linked paths and funding from any source.
 Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build is.
 
+## Where things stand (2026-10-12)
+- Phase 1 (design) is done: every screen and behaviour is decided and mocked in `mockups/prototype.html`.
+- Phase 2 (data and setup) is done except view-offline, which waits until a screen shows real data.
+- The real app so far is sign-in plus the data layer. The signed-in screen is a placeholder.
+- Next: Phase 3, the real map, in slices: You and areas; goals, targets and paths; a goal's road with milestones
+  and tasks; habits; then logging and funding. Port behaviour from the prototype, do not redesign it.
+
 ## Stack
 - Static site: plain HTML, CSS and JavaScript (ES modules), no build step.
-- Supabase (free tier) for the database and email magic-link login, with row-level security
-  so each user only sees their own rows. `supabase-js` is a pinned copy in `js/vendor` (see its README), not loaded from a CDN.
+- Supabase (free tier) for the database and email sign-in links, with row-level security
+  so each user only sees their own rows.
+- `supabase-js` is a pinned copy in `js/vendor` (see its README), loaded by `index.html` as `window.supabase`.
+  Do not load code from a CDN at run time. Google Fonts (a stylesheet) is the only outside resource.
 - Sign-in uses the PKCE flow: a link only works in the browser that asked for it.
-- Hosted on GitHub Pages (public repo). Installable as a PWA.
+- Hosted on GitHub Pages (public repo `Benvog/roadmap`, pushed over SSH). Installable as a PWA (not built yet).
+
+## Files
+- `index.html`, `css/app.css`: the app shell and styles. Tokens at the top of `app.css` match "Look" below.
+- `js/main.js`: starts the app and draws the sign-in and signed-in screens.
+- `js/store.js`: the only module that talks to Supabase. Sign-in functions, then `loadAll`, `add`, `update`,
+  `remove`, `checkIn`, `undoCheckIn`. `loadAll` returns flat lists keyed by table name; nothing computes totals yet.
+- `js/config.js`: the Supabase project URL and publishable key. Both are public by design.
+- `supabase/schema.sql` and `supabase/2026-10-12-same-owner.sql`: the scripts that created the database.
+  Both have been run. Change the schema by adding a new dated script and having the user run it in the
+  Supabase SQL editor; never edit a script that has already been run.
+- `docs/DATA-MODEL.md`: the eight tables, the rules, and what is calculated instead of stored.
+- `assets/icon.svg`: the app icon.
+- `mockups/`: the prototype and earlier design options (see "Mockups").
 
 ## Run locally
 - `"%LOCALAPPDATA%\Programs\Python\Python313\python.exe" -m http.server 8000` from the repo root,
-  then open http://localhost:8000. (Plain `python` is broken on this PC.)
-- Phone preview over Wi-Fi: use the PC's LAN IP; the network may need to be set to Private.
-- Sign-in links only return to addresses allowed in Supabase (Authentication, URL Configuration). `http://localhost:8000` is allowed; the GitHub Pages address has to be added at deploy.
+  then open http://localhost:8000. (Plain `python` is broken on this PC.) Node 24 is installed and is
+  handy for `node --check <file>`.
+- Sign-in links only return to addresses allowed in Supabase (Authentication, URL Configuration).
+  `http://localhost:8000` is allowed, so sign-in only works on this PC for now; the GitHub Pages address
+  has to be added at deploy. A phone cannot test sign-in until then.
 - Supabase's built-in email only sends a few sign-in emails an hour.
+
+## Testing
+- There is no test suite yet. Every step is checked by loading the app in headless Edge
+  (`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --headless=new`).
+- Headless Edge will not go narrower than about 500px. For a phone-width screenshot, load the page in a
+  390px-wide iframe from a small same-origin wrapper page and screenshot that.
+- `--virtual-time-budget` with `--dump-dom` is unreliable for this app: it sometimes dumps before the page
+  has drawn, and reports a blank page that is fine in a real browser. For a load check that can be trusted,
+  open a wrapper page that polls the iframe in real time and reports back with a `fetch` to the local server
+  (the result shows in the server log), then stop the browser process. Do not leave headless browsers
+  running: several at once made loads take six to eight seconds and looked like a bug.
+- Anything that needs a login cannot be run from here: only the user's browser holds their session.
+  The pattern that has worked: add a temporary button on the signed-in screen that runs the check as the
+  user and lists Pass or Fail lines, ask the user to click it, then remove it.
+- After removing temporary code, search for every reference to it and run the load check before committing.
+  A leftover import of a deleted file once broke the app in a commit.
 
 ## Rules
 - Mobile-first: design at 360–430px wide first, then check desktop.
 - Light and dark themes; accent colour for actions, selection and highlights only.
 - Money shows as `KES 100,000`. Targets can also count non-money things (books, kg).
-- All Supabase calls go through one module (`js/store.js`) so the data layer can change in one place.
-- The Supabase project URL and publishable key are in `js/config.js` (public by design). The tables were created by running `supabase/schema.sql` in the SQL editor; change the schema by adding a new dated script next to it, not by editing that file. `supabase/2026-10-12-same-owner.sql` (also run) makes every child row share its parent's owner.
-- The data model is in `docs/DATA-MODEL.md`. Offline is view-only: `store.js` keeps the last loaded data on the device.
+- All Supabase calls go through `js/store.js` so the data layer can change in one place.
+- Anything a user typed is escaped before it goes into HTML (see `esc` in `js/main.js`).
+- Habits are daily or a number of times a week (`times_per_week`, 7 means daily). The prototype's habit
+  forms do not have the "how often" choice yet; the real forms need it.
+- Offline is view-only: the last loaded data is kept on the device and shown with an "offline" note;
+  changes need a connection.
 - No reminders, charts/history or sharing in v1 (see PRD "Not building").
+
+## Security
+- A background security review runs on each commit and has found real issues three times. Treat its
+  findings as work to do: explain the finding to the user in plain terms, fix it, and say what was tested.
+- Decisions that came from it: child rows must share their parent's owner (composite foreign keys);
+  sign-in uses PKCE; no third-party code is fetched at run time.
+- New sign-ups can be switched off in Supabase (Authentication, Sign In / Providers). Recommended to the
+  user for a personal app; not confirmed done.
+- Never ask for or store the Supabase `service_role` key or the database password.
 
 ## Workflow
 - Follow `docs/PLAN.md`: one small task at a time, show the result, wait for approval,
   then tick it off and commit. Push only when told "push".
 - Keep this file, the PLAN and the PRD's Decisions current at each step.
+- For a choice that is easier to judge by seeing it (motion, colour, type, icon), the user prefers all the
+  options built into the mockup behind a temporary switch, then the switch and the losers removed.
 
 ## Mockups
-- `mockups/prototype.html` is the interactive prototype (branching map, journey roads, habits, logging, add flows) with sample data. It opens straight on the map.
+- `mockups/prototype.html` is the interactive prototype with sample data: the branching map, journey roads,
+  habits, logging, add and edit flows, the opening motion and the zoom camera. It is the reference for how
+  the real app should look and behave.
   Open it in a browser, or serve the repo and open `/mockups/prototype.html`.
 - The same page is published privately for phone testing at https://claude.ai/artifact/KC5KC9HxN1Eziw3dtz1DLM.
   To update it, publish the file without its first two lines (the doctype and `<html>`/meta line) to that URL.
-- `mockups/areas-map.html` is the earlier list of areas, kept as the future List view.
+- `mockups/icons.html` shows the four icon options that were compared (also at
+  https://claude.ai/artifact/JCpeZmNsWPgisjTmSLPBFx).
+- `mockups/areas-map.html` is the earlier list of areas, kept as the future List view. It still uses the
+  earlier green and needs the amber tokens when it becomes the List view.
 
 ## Look
 - Accent: amber on warm neutrals. Chosen from four palettes tried side by side on 2026-10-12.
 - Name: Vektor (direction plus force). The folder and GitHub repo are still called `roadmap`.
 - Icon: `assets/icon.svg`, a centre node with three branches (You and your areas), ink #1a1206 on an amber #ffb454 tile. The amber tile was my default; the dark-tile variant is in `mockups/icons.html`.
 - Type: Manrope (weights 500 to 800) for everything, with a system sans fallback. Kept after trying four alternatives on 2026-10-12.
-- Tokens (light / dark), as defined at the top of `mockups/prototype.html`:
+- Tokens (light / dark), as defined at the top of `css/app.css` and `mockups/prototype.html`:
   - `--bg` #f7f5f1 / #13110e, `--surface` #ffffff / #1c1915, `--line` #ddd8ce / #343029
   - `--text` #201b14 / #f0ece5, `--muted` #655d50 / #aaa294, `--track` #e9e4da / #2c2822
   - `--accent` #9c5200 / #ffb454, `--on-accent` #ffffff / #1a1206, `--accent-soft` #f8ead6 / #3a2a10
   - `--danger` #b3261e / #f2b8b5, `--on-danger` #ffffff / #3b0b08
 - Light-theme accent is a burnt orange on purpose: a bright amber fails contrast as text and behind white labels.
 - Every text pair is at least 4.5:1 (worst is accent on accent-soft in light, 4.9:1).
-- `mockups/areas-map.html` still uses the earlier green and needs these tokens when it becomes the List view.
+- Motion: You pulses until the map is opened; a line draws out of the parent and each node pops in when its
+  line arrives; the overview sits zoomed out (0.82) and opening an area travels in to full size, closing it
+  travels back.
