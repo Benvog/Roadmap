@@ -1,5 +1,6 @@
 // Starts the app: shows the sign-in screen, or the signed-in screen once there is a user.
 import * as store from './store.js';
+import { dataLayerCheck } from './dev-check.js';   // temporary
 
 const app = document.getElementById('app');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
