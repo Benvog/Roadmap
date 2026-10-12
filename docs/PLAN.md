@@ -19,7 +19,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 
 ## Phase 2: Data and setup
 - [x] Data model (tables and links): approved, in `docs/DATA-MODEL.md`
-- [ ] Create Supabase project; tables + row-level security
+- [x] Create Supabase project; tables + row-level security (`supabase/schema.sql` run on 2026-10-12; project details in `js/config.js`)
 - [ ] Magic-link sign-in working locally
 - [ ] `js/store.js` data layer
 - [ ] View offline: keep a copy of the last loaded data on the device and show it, read-only, with an "offline" note when there is no connection

@@ -1,6 +1,6 @@
 # Data model
 
-What Vektor stores in Supabase and how it links. Status: **approved** (2026-10-12). Nothing here has been created in Supabase yet.
+What Vektor stores in Supabase and how it links. Status: **approved and created** (2026-10-12) by running `supabase/schema.sql`.
 
 ## The shape
 
