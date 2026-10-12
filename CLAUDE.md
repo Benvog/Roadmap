@@ -37,6 +37,7 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 ## Look
 - Accent: amber on warm neutrals. Chosen from four palettes tried side by side on 2026-10-12.
 - Name: Vektor (direction plus force). The folder and GitHub repo are still called `roadmap`.
+- Icon: `assets/icon.svg`, a centre node with three branches (You and your areas), ink #1a1206 on an amber #ffb454 tile. The amber tile was my default; the dark-tile variant is in `mockups/icons.html`.
 - Type: Manrope (weights 500 to 800) for everything, with a system sans fallback. Kept after trying four alternatives on 2026-10-12.
 - Tokens (light / dark), as defined at the top of `mockups/prototype.html`:
   - `--bg` #f7f5f1 / #13110e, `--surface` #ffffff / #1c1915, `--line` #ddd8ce / #343029

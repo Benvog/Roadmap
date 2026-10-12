@@ -11,11 +11,11 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [x] Edit flows: a pencil on an unfolded area or target, on a road's header, and Edit in the milestone and habits sheets, for rename, due date, moving an area and delete with a confirmation (mocked in `mockups/prototype.html`)
 - [x] You opens and folds the map: the app starts on You alone, a tap opens the areas, another tap folds everything back (mocked)
 - [x] Motion: You pulses until the map is opened; lines draw out of the parent and each node pops in when its line arrives; the camera sits zoomed out on the overview, travels in when an area opens and back out when it closes (mocked)
-- [ ] Settle look: colours, type, name and icon; write them into CLAUDE.md
+- [x] Settle look: colours, type, name and icon; write them into CLAUDE.md
   - [x] Colour: amber on warm neutrals (burnt orange in light, bright amber in dark); tokens are in CLAUDE.md
   - [x] Type: Manrope throughout (kept after trying Bricolage Grotesque, Plus Jakarta Sans, Outfit and a mix)
   - [x] Name: Vektor
-  - [ ] Icon
+  - [x] Icon: a node with three branches (You and your areas), dark on an amber tile, saved as `assets/icon.svg`; the four options are in `mockups/icons.html`
 
 ## Phase 2: Data and setup
 - [ ] Data model (tables and links) written here and approved

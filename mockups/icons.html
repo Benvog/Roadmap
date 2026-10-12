@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vektor Icon Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Layout: one card per icon option, each shown large, at home-screen size on light and dark, and at tab size. */
+  :root {
+    --bg: #f7f5f1;
+    --surface: #ffffff;
+    --line: #ddd8ce;
+    --text: #201b14;
+    --muted: #655d50;
+    --accent: #9c5200;
+    --accent-soft: #f8ead6;
+    --font: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #13110e; --surface: #1c1915; --line: #343029; --text: #f0ece5; --muted: #aaa294;
+      --accent: #ffb454; --accent-soft: #3a2a10; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #13110e; --surface: #1c1915; --line: #343029; --text: #f0ece5; --muted: #aaa294;
+    --accent: #ffb454; --accent-soft: #3a2a10; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 500 15px/1.4 var(--font); -webkit-font-smoothing: antialiased; }
+  .page { max-width: 520px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; }
+  h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+  .lede { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  .option { margin-top: 16px; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+  .option h2 { margin: 0; font-size: 17px; font-weight: 800; }
+  .option h2 span { color: var(--accent); font-size: 12px; letter-spacing: .05em; text-transform: uppercase; margin-right: 8px; }
+  .option p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+  .big { display: flex; gap: 14px; margin-top: 14px; }
+  .big svg { width: 112px; height: 112px; flex: none; }
+  .option .label { margin: 16px 0 6px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+  /* Fixed wallpaper colours on purpose: they stand in for a light and a dark phone home screen. */
+  .homes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .home { display: flex; justify-content: center; gap: 16px; padding: 14px 8px 10px; border-radius: 14px; }
+  .home.light { background: #dfe6ee; color: #14181d; }
+  .home.dark { background: #15181d; color: #f1f3f5; }
+  .app { display: grid; justify-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; }
+  .app svg { width: 56px; height: 56px; }
+  .tab { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 10px; border-radius: 10px 10px 0 0; background: var(--bg); border: 1px solid var(--line); border-bottom: 0; font-size: 13px; }
+  .tab svg { width: 18px; height: 18px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+
+<div class="page">
+  <h1>Vektor icon options</h1>
+  <p class="lede">Four marks, each on an amber tile and on a dark tile, at the sizes you would really see them.</p>
+  <div id="options"></div>
+</div>
+
+<script>
+const AMBER = '#ffb454', INK = '#1a1206';
+const line = (d, w) => (c) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const dot = (x, y, r) => (c) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
+
+// Each mark is drawn on a 512 square; `c` is the mark colour and `t` the tile colour.
+const OPTIONS = [
+  { id: 'A', name: 'A V made of an arrow', note: 'The V, with its right stroke ending in an arrowhead: the name and its meaning in one mark.',
+    mark: (c) => line('M128 152 L238 370 L384 134 M286 158 L384 134 L394 232', 50)(c) },
+  { id: 'B', name: 'A node with branches', note: 'You in the middle with three areas around you, like the map.',
+    mark: (c) => line('M256 256 L256 112 M256 256 L381 328 M256 256 L131 328', 26)(c) + dot(256, 256, 58)(c) + dot(256, 108, 36)(c) + dot(384, 330, 36)(c) + dot(128, 330, 36)(c) },
+  { id: 'C', name: 'A winding road', note: 'A goal as a road: a start, a curve and a target at the end.',
+    mark: (c, t) => line('M150 392 C150 262 362 300 362 170', 50)(c) + dot(362, 148, 50)(c) + dot(362, 148, 20)(t) + dot(150, 392, 16)(t) },
+  { id: 'D', name: 'A plain bold V', note: 'Just the letter. The simplest of the four.',
+    mark: (c) => line('M132 142 L256 378 L380 142', 62)(c) },
+];
+const icon = (o, tile, mark) => `<svg viewBox="0 0 512 512" role="img" aria-label="Option ${o.id} on ${tile === AMBER ? 'an amber' : 'a dark'} tile">
+  <rect width="512" height="512" rx="116" fill="${tile}"/>${o.mark(mark, tile)}</svg>`;
+
+document.getElementById('options').innerHTML = OPTIONS.map((o) => {
+  const amber = icon(o, AMBER, INK), dark = icon(o, INK, AMBER);
+  const home = (cls) => `<div class="home ${cls}"><div class="app">${amber}Vektor</div><div class="app">${dark}Vektor</div></div>`;
+  return `<section class="option">
+    <h2><span>Option ${o.id}</span>${o.name}</h2>
+    <p>${o.note}</p>
+    <div class="big">${amber}${dark}</div>
+    <p class="label">On a home screen</p>
+    <div class="homes">${home('light')}${home('dark')}</div>
+    <p class="label">In a browser tab</p>
+    <div class="tabs"><span class="tab">${amber}Vektor</span><span class="tab">${dark}Vektor</span></div>
+  </section>`;
+}).join('');
+</script>

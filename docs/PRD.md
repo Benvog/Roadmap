@@ -59,3 +59,4 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 - 2026-10-12: Accent colour is amber on warm neutrals, chosen over green, indigo and violet.
 - 2026-10-12: Typeface stays Manrope, kept over Bricolage Grotesque, Plus Jakarta Sans, Outfit and a headings-only mix.
 - 2026-10-12: The app is called Vektor.
+- 2026-10-12: The icon is a node with three branches, like You and the areas on the map.
