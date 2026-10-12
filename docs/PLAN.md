@@ -14,7 +14,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [ ] Settle look: colours, type, name and icon; write them into CLAUDE.md
   - [x] Colour: amber on warm neutrals (burnt orange in light, bright amber in dark); tokens are in CLAUDE.md
   - [x] Type: Manrope throughout (kept after trying Bricolage Grotesque, Plus Jakarta Sans, Outfit and a mix)
-  - [ ] Name
+  - [x] Name: Vektor
   - [ ] Icon
 
 ## Phase 2: Data and setup

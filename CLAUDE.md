@@ -1,4 +1,4 @@
-# Roadmap
+# Vektor
 
 A personal life-areas roadmap: areas → goals → milestones → tasks, habits per area, and targets
 (e.g. KES 100,000 in 12 months) fed by linked paths and funding from any source.
@@ -36,6 +36,7 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 
 ## Look
 - Accent: amber on warm neutrals. Chosen from four palettes tried side by side on 2026-10-12.
+- Name: Vektor (direction plus force). The folder and GitHub repo are still called `roadmap`.
 - Type: Manrope (weights 500 to 800) for everything, with a system sans fallback. Kept after trying four alternatives on 2026-10-12.
 - Tokens (light / dark), as defined at the top of `mockups/prototype.html`:
   - `--bg` #f7f5f1 / #13110e, `--surface` #ffffff / #1c1915, `--line` #ddd8ce / #343029
