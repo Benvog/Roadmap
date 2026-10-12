@@ -20,7 +20,7 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - Light and dark themes; accent colour for actions, selection and highlights only.
 - Money shows as `KES 100,000`. Targets can also count non-money things (books, kg).
 - All Supabase calls go through one module (`js/store.js`) so the data layer can change in one place.
-- The Supabase project URL and publishable key are in `js/config.js` (public by design). The tables were created by running `supabase/schema.sql` in the SQL editor; change the schema by adding a new dated script next to it, not by editing that file.
+- The Supabase project URL and publishable key are in `js/config.js` (public by design). The tables were created by running `supabase/schema.sql` in the SQL editor; change the schema by adding a new dated script next to it, not by editing that file. `supabase/2026-10-12-same-owner.sql` (also run) makes every child row share its parent's owner.
 - The data model is in `docs/DATA-MODEL.md`. Offline is view-only: `store.js` keeps the last loaded data on the device.
 - No reminders, charts/history or sharing in v1 (see PRD "Not building").
 
