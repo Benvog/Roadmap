@@ -13,6 +13,8 @@
     --text: #15201c;
     --muted: #55625c;
     --accent: #0b7a5e;
+    --danger: #b3261e;
+    --on-danger: #ffffff;
     --on-accent: #ffffff;
     --accent-soft: #e2f1ec;
     --track: #e3e8e5;
@@ -22,13 +24,13 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #0e1312; --surface: #171d1b; --line: #2b3531; --text: #e9efec; --muted: #9daaa4;
-      --accent: #45d1a6; --on-accent: #0e1312; --accent-soft: #16302a; --track: #28312e; --shadow: none;
+      --accent: #45d1a6; --danger: #f2b8b5; --on-danger: #3b0b08; --on-accent: #0e1312; --accent-soft: #16302a; --track: #28312e; --shadow: none;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #0e1312; --surface: #171d1b; --line: #2b3531; --text: #e9efec; --muted: #9daaa4;
-    --accent: #45d1a6; --on-accent: #0e1312; --accent-soft: #16302a; --track: #28312e; --shadow: none;
+    --accent: #45d1a6; --danger: #f2b8b5; --on-danger: #3b0b08; --on-accent: #0e1312; --accent-soft: #16302a; --track: #28312e; --shadow: none;
     color-scheme: dark;
   }
 
@@ -138,6 +140,11 @@
     position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px;
     color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap;
   }
+  .edit {
+    width: 34px; height: 34px; padding: 0; border-radius: 50%; display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--line); color: var(--text); box-shadow: var(--shadow);
+  }
+  .edit svg { width: 16px; height: 16px; }
   .habits {
     width: 132px; padding: 8px 14px; border-radius: 22px; text-align: left;
     background: var(--accent-soft); border: 1px solid var(--line);
@@ -267,6 +274,10 @@
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
   .btn { min-height: 44px; padding: 0 16px; border-radius: 12px; cursor: pointer; font-weight: 700; border: 1px solid var(--line); background: var(--surface); }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .btn.danger-btn { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
+  .danger { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .danger p { margin: 0 0 4px; font-weight: 700; }
+  .danger .actions { margin-top: 10px; }
   .btn[disabled] { opacity: .55; cursor: not-allowed; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -315,6 +326,7 @@
   <div class="page-head">
     <button class="icon-btn back-btn" id="road-back" type="button" aria-label="Back"></button>
     <div class="title"><p class="kicker" id="kicker"></p><h1 id="road-title"></h1></div>
+    <button class="icon-btn" id="road-edit" type="button" aria-label="Edit this goal"></button>
     <button class="icon-btn theme-btn" type="button" aria-label="Switch between light and dark theme"></button>
   </div>
   <div class="chips" id="chips" role="group" aria-label="Goals"></div>
@@ -368,6 +380,7 @@ const ICONS = {
   dot: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>',
   flag: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V4M6 4h11l-2 4 2 4H6"/></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
 };
 const $ = (id) => document.getElementById(id);
@@ -424,7 +437,7 @@ document.addEventListener('click', (e) => {
   if (to === 'map' || to === 'both') {
     BOTH = to === 'both';
     open.clear();
-    $('hint').textContent = BOTH ? 'Tap to explore · + adds something new' : 'Tap an area to explore · drag to move · pinch to zoom';
+    $('hint').textContent = BOTH ? 'Tap You to open your map' : 'Tap an area to explore · drag to move · pinch to zoom';
     $('hint').classList.remove('gone');
     show('map'); renderMap(); centre();
   }
@@ -455,7 +468,7 @@ function openSheet(goal, i) {
   if (state === 'done') actions += `<button class="btn" data-act="undo">Mark as not done</button>`;
   else if (state === 'locked') actions += `<button class="btn" disabled>Locked until funded</button>`;
   else actions += `<button class="btn primary" data-act="done">Mark milestone done</button>`;
-  actions += `<button class="btn" data-act="add-task">+ Add a task</button>`;
+  actions += `<button class="btn" data-act="add-task">+ Add a task</button><button class="btn" data-act="edit">Edit</button>`;
 
   el.innerHTML = `<div class="sheet-head">
       <div><p class="kicker">${goal.name} · milestone ${i + 1} of ${goal.steps.length}</p><h2 id="sheet-title">${s.t}</h2></div>
@@ -468,6 +481,7 @@ function openSheet(goal, i) {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'close') closeSheet();
     if (act === 'add-task') openAdd('task', { goal, i });
+    if (act === 'edit') openEdit('milestone', goal, i);
     if (act === 'done') { s.done = true; (s.tasks || []).forEach((t) => (t.done = true)); refresh(); }
     if (act === 'undo') { s.done = false; (s.tasks || []).forEach((t) => (t.done = false)); refresh(); }
     if (act === 'log') {
@@ -521,11 +535,13 @@ function openHabits(area) {
     <ul class="tasks">${area.habits.map((h) => `<li><label><input type="checkbox" id="habit-${h.id}" data-habit="${h.id}" ${h.done ? 'checked' : ''}>
       <span>${h.name}<small class="muted streak">${streakText(h)}</small></span></label></li>`).join('')}</ul>
     <p class="muted">${area.habits.length ? 'Check in once a day. The streak counts days in a row.' : 'No habits in this area yet.'}</p>
-    <div class="actions"><button class="btn" type="button" data-act="add-habit">+ Add a habit</button></div>`;
+    <div class="actions"><button class="btn" type="button" data-act="add-habit">+ Add a habit</button>
+      ${area.habits.length ? '<button class="btn" type="button" data-act="edit-habits">Edit</button>' : ''}</div>`;
   el.hidden = false;
   el.onclick = (e) => {
     if (e.target.closest('[data-act="close"]')) closeSheet();
     if (e.target.closest('[data-act="add-habit"]')) openAdd('habit', area);
+    if (e.target.closest('[data-act="edit-habits"]')) openEdit('habits', area);
   };
   el.onchange = (e) => { if (e.target.dataset.habit) toggleHabit(e.target.dataset.habit); };
 }
@@ -535,8 +551,9 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet
 let seq = 0;
 const uid = (p) => p + '-new-' + (++seq);
 const niceDate = (v) => new Date(v + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-function openForm({ kicker, title, fields, submit, onSubmit }) {
+function openForm({ kicker, title, fields, submit, onSubmit, extras = [], remove }) {
   const el = $('sheet');
+  const askDelete = remove && `<button class="btn" type="button" data-act="ask-delete">${remove.label}</button>`;
   habitsArea = null;
   el.innerHTML = `<div class="sheet-head">
       <div><p class="kicker">${kicker}</p><h2 id="sheet-title">${title}</h2></div>
@@ -545,20 +562,35 @@ function openForm({ kicker, title, fields, submit, onSubmit }) {
     <form id="add-form" novalidate>
       ${fields.map((f) => `<div class="field"><label for="f-${f.id}">${f.label}</label>
         <input id="f-${f.id}" type="${f.type || 'text'}" ${f.type === 'number' ? 'inputmode="numeric" min="1" step="1"' : 'maxlength="60"'}
-          placeholder="${f.placeholder || ''}" autocomplete="off"></div>`).join('')}
+          value="${f.value || ''}" placeholder="${f.placeholder || ''}" autocomplete="off"></div>`).join('')}
       <p class="error" id="add-error" role="alert" hidden>Give it a name first.</p>
-      <div class="actions"><button class="btn primary" type="submit">${submit}</button></div>
-    </form>`;
+      <div class="actions"><button class="btn primary" type="submit">${submit}</button>
+        ${extras.map((x, n) => `<button class="btn" type="button" data-extra="${n}">${x.label}</button>`).join('')}</div>
+    </form>
+    ${remove ? `<div class="danger" id="danger">${askDelete}</div>` : ''}`;
   el.hidden = false;
   el.onchange = null;
-  el.onclick = (e) => { if (e.target.closest('[data-act="close"]')) closeSheet(); };
+  el.onclick = (e) => {
+    const t = e.target.closest('[data-act], [data-extra]');
+    if (!t) return;
+    if (t.dataset.extra) return extras[t.dataset.extra].run();
+    const act = t.dataset.act;
+    if (act === 'close') closeSheet();
+    if (act === 'ask-delete') {
+      $('danger').innerHTML = `<p>${remove.confirm}</p><div class="actions">
+        <button class="btn danger-btn" type="button" data-act="delete">Delete</button>
+        <button class="btn" type="button" data-act="keep">Keep it</button></div>`;
+    }
+    if (act === 'keep') $('danger').innerHTML = askDelete;
+    if (act === 'delete') remove.run();
+  };
   $('add-form').onsubmit = (e) => {
     e.preventDefault();
     const v = Object.fromEntries(fields.map((f) => [f.id, f.type ? $('f-' + f.id).value : esc($('f-' + f.id).value.trim())]));
-    if (!v.name) { $('add-error').hidden = false; $('f-name').focus(); return; }
+    if (fields[0].id === 'name' && !v.name) { $('add-error').hidden = false; $('f-name').focus(); return; }
     onSubmit(v);
   };
-  $('f-name').focus({ preventScroll: true });
+  if (!fields[0].value) $('f-' + fields[0].id).focus({ preventScroll: true });
 }
 function openAdd(kind, src) {
   const name = (placeholder) => ({ id: 'name', label: 'Name', placeholder });
@@ -577,7 +609,7 @@ function openAdd(kind, src) {
     onSubmit: (v) => { src.habits.push({ id: uid('habit'), name: v.name, streak: 0 }); renderMap(); openHabits(src); } });
   if (kind === 'milestone') openForm({ kicker: src.name, title: 'Add a milestone', submit: 'Add milestone',
     fields: [name('The next big step'), { id: 'due', label: 'Due date (optional)', type: 'date' }],
-    onSubmit: (v) => { src.steps.push({ t: v.name, due: v.due && niceDate(v.due) }); closeSheet(); renderRoad(); } });
+    onSubmit: (v) => { src.steps.push({ t: v.name, due: v.due && niceDate(v.due), dueRaw: v.due }); closeSheet(); renderRoad(); } });
   if (kind === 'task') openForm({ kicker: src.goal.steps[src.i].t, title: 'Add a task', submit: 'Add task', fields: [name('One small thing to do')],
     onSubmit: (v) => {
       const s = src.goal.steps[src.i];
@@ -585,6 +617,66 @@ function openAdd(kind, src) {
       s.done = false;
       rerender(); openSheet(src.goal, src.i);
     } });
+}
+
+// ---------- Editing things ----------
+const drop = (list, item) => list.splice(list.indexOf(item), 1);
+function openEdit(kind, src, i) {
+  const name = (value) => ({ id: 'name', label: 'Name', value });
+  const due = (value) => ({ id: 'due', label: 'Due date (optional)', type: 'date', value });
+  const setDue = (thing, v) => { thing.dueRaw = v.due; thing.due = v.due && niceDate(v.due); };
+  if (kind === 'area') {
+    const move = (by) => () => {
+      const at = DATA.indexOf(src), to = (at + by + DATA.length) % DATA.length;
+      [DATA[at], DATA[to]] = [DATA[to], DATA[at]];
+      renderMap();
+    };
+    openForm({ kicker: 'Area', title: 'Edit ' + src.name, submit: 'Save', fields: [name(src.name)],
+      extras: [{ label: 'Move clockwise', run: move(1) }, { label: 'Move anticlockwise', run: move(-1) }],
+      onSubmit: (v) => { src.name = v.name; closeSheet(); renderMap(); },
+      remove: { label: 'Delete this area', confirm: `Delete ${src.name} and everything in it?`,
+        run: () => { drop(DATA, src); closeSheet(); renderMap(); centre(true); } } });
+  }
+  if (kind === 'target') {
+    const area = DATA.find((a) => a.goals.includes(src));
+    openForm({ kicker: area.name, title: 'Edit target', submit: 'Save',
+      fields: [name(src.name), { id: 'target', label: 'Target amount in KES', type: 'number', value: src.target.of }],
+      onSubmit: (v) => { src.name = v.name; if (Number(v.target) > 0) src.target.of = Math.floor(Number(v.target)); closeSheet(); renderMap(); },
+      remove: { label: 'Delete this target', confirm: `Delete ${src.name} and its paths?`,
+        run: () => { drop(area.goals, src); closeSheet(); renderMap(); } } });
+  }
+  if (kind === 'goal') {
+    const { area, parent } = road;
+    openForm({ kicker: parent ? parent.name : area.name, title: parent ? 'Edit path' : 'Edit goal', submit: 'Save',
+      fields: [name(src.name), due(src.dueRaw)],
+      onSubmit: (v) => { src.name = v.name; setDue(src, v); openRoad(src.id, roadFromMap); },
+      remove: { label: parent ? 'Delete this path' : 'Delete this goal', confirm: `Delete ${src.name} and its milestones?`,
+        run: () => { drop(parent ? parent.paths : area.goals, src); show('map'); renderMap(); } } });
+  }
+  if (kind === 'milestone') {
+    const s = src.steps[i];
+    openForm({ kicker: src.name, title: 'Edit milestone', submit: 'Save',
+      fields: [name(s.t), due(s.dueRaw), ...(s.tasks || []).map((t, n) => ({ id: 't' + n, label: `Task ${n + 1} (clear to remove)`, value: t.t }))],
+      onSubmit: (v) => {
+        s.t = v.name;
+        setDue(s, v);
+        if (s.tasks) {
+          s.tasks = s.tasks.map((t, n) => ({ ...t, t: v['t' + n] })).filter((t) => t.t);
+          if (!s.tasks.length) delete s.tasks;
+        }
+        rerender(); openSheet(src, i);
+      },
+      remove: { label: 'Delete this milestone', confirm: `Delete ${s.t}?`, run: () => { src.steps.splice(i, 1); closeSheet(); rerender(); } } });
+  }
+  if (kind === 'habits') {
+    openForm({ kicker: src.name, title: 'Edit habits', submit: 'Save',
+      fields: src.habits.map((h, n) => ({ id: 'h' + n, label: `Habit ${n + 1} (clear to remove)`, value: h.name })),
+      onSubmit: (v) => {
+        src.habits.forEach((h, n) => (h.name = v['h' + n]));
+        src.habits = src.habits.filter((h) => h.name);
+        renderMap(); openHabits(src);
+      } });
+  }
 }
 
 // ---------- Branching map ----------
@@ -611,6 +703,10 @@ function layout() {
     Object.assign(n, { x, y, d, parent });
     nodes.push(n);
     if (!open.has(n.id)) return;
+    if (n.type === 'area' || n.src.target) {
+      const area = n.type === 'area';
+      nodes.push({ id: n.id + '-edit', type: 'edit', kind: area ? 'area' : 'target', src: n.src, x: x + (area ? 38 : 76), y: y - (area ? 38 : 30) });
+    }
     const [dx, dy] = d;
     let px = dy, py = -dx;
     if (py < -1e-9 || (Math.abs(py) < 1e-9 && px < 0)) { px = -px; py = -py; }
@@ -634,6 +730,7 @@ function layout() {
       });
     }
   };
+  if (!open.has('you')) return { nodes, edges };
   const areas = buildTree(), R = Math.max(AREA_GAP, 16 * areas.length);
   areas.forEach((a, i) => {
     const angle = -Math.PI / 2 + i * 2 * Math.PI / areas.length, d = [Math.cos(angle), Math.sin(angle)];
@@ -647,12 +744,13 @@ function layout() {
 function nodeHTML(n) {
   const at = `left:${n.x}px;top:${n.y}px`;
   const cls = (seen.has(n.id) ? '' : ' new') + (open.has(n.id) ? ' open' : '');
-  if (n.type === 'you') return `<button class="node you" data-id="you" style="${at}" aria-label="You. Back to the centre">You</button>`;
+  if (n.type === 'you') return `<button class="node you" data-id="you" style="${at}" aria-expanded="${open.has('you')}">You</button>`;
   if (n.type === 'area') {
     const p = percent(n.src.goals.flatMap(stepsUnder));
     return `<button class="node area${cls}" data-id="${n.id}" style="${at};--p:${p}" aria-expanded="${open.has(n.id)}">
       <span class="disc"><b>${n.src.name}</b><small>${n.src.goals.length ? p + '%' : 'No goals'}</small></span></button>`;
   }
+  if (n.type === 'edit') return `<button class="node edit${cls}" data-id="${n.id}" style="${at}" aria-label="Edit ${n.src.name}">${ICONS.pencil}</button>`;
   if (n.type === 'add') {
     const label = 'Add ' + (n.add === 'area' ? 'an area' : 'a ' + n.add + ' to ' + n.src.name);
     return `<button class="node add${cls}" data-id="${n.id}" style="${at}" aria-label="${label}">+<small>${n.add[0].toUpperCase() + n.add.slice(1)}</small></button>`;
@@ -724,10 +822,16 @@ nodesEl.addEventListener('click', (e) => {
   if (!n) return;
   const hint = $('hint');
   hint.classList.add('gone');
-  if (n.type === 'you') return centre(true);
+  if (n.type === 'you') {
+    // You opens the areas; tapping it again folds the whole map back up.
+    if (open.has('you')) open.clear(); else open.add('you');
+    renderMap();
+    return centre(true);
+  }
   if (n.type === 'step') return openSheet(n.goal, n.i);
   if (n.type === 'habits') return openHabits(n.src);
   if (n.type === 'add') return openAdd(n.add, n.src);
+  if (n.type === 'edit') return openEdit(n.kind, n.src);
   closeSheet();
   if (n.type === 'goal' && BOTH && n.src.steps) return openRoad(n.id, true);
   if (open.has(n.id)) open.delete(n.id); else open.add(n.id);
@@ -796,7 +900,7 @@ function openRoad(id, fromMap) {
   road = allGoals().find((x) => x.goal.id === id);
   roadFromMap = fromMap;
   show('road');
-  $('kicker').innerHTML = road.area.name + (road.parent ? ' · ' + road.parent.name : '');
+  $('kicker').innerHTML = road.area.name + (road.parent ? ' · ' + road.parent.name : '') + (road.goal.due ? ' · Due ' + road.goal.due : '');
   $('road-title').innerHTML = road.goal.name;
   $('road-back').setAttribute('aria-label', fromMap ? 'Back to the map' : 'Back to the options');
   $('chips').innerHTML = allGoals().map((x) =>
@@ -890,6 +994,8 @@ $('chips').addEventListener('click', (e) => {
   const id = e.target.closest('[data-goal]')?.dataset.goal;
   if (id) openRoad(id, roadFromMap);
 });
+$('road-edit').innerHTML = ICONS.pencil;
+$('road-edit').addEventListener('click', () => openEdit('goal', road.goal));
 $('road-back').addEventListener('click', () => {
   if (roadFromMap) { show('map'); renderMap(); } else show('menu');
 });

@@ -8,7 +8,8 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [x] Habits: a "Today" strip under the map plus a Habits node in each area (mocked in `mockups/prototype.html`)
 - [x] Target view: amounts are logged on each path's road ("Log amount" with a note and a list of entries) and roll up to the KES 100,000 total (mocked in `mockups/prototype.html`)
 - [x] Add flows: a "+" at the end of each branch for area, goal, path, milestone, task and habit (mocked in `mockups/prototype.html`)
-- [ ] Edit flows: an Edit button on each thing's own screen for rename, due date and delete
+- [x] Edit flows: a pencil on an unfolded area or target, on a road's header, and Edit in the milestone and habits sheets, for rename, due date, moving an area and delete with a confirmation (mocked in `mockups/prototype.html`)
+- [x] You opens and folds the map: the app starts on You alone, a tap opens the areas, another tap folds everything back (mocked)
 - [ ] Settle look: colours, type, name and icon; write them into CLAUDE.md
 
 ## Phase 2: Data and setup
