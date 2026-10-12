@@ -57,3 +57,4 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 - 2026-10-12: The map starts on You alone. Tapping You opens the areas; tapping it again folds the whole map back.
 - 2026-10-12: Motion: You pulses until the map is opened. Opening draws a line out of the parent and pops each node in when its line arrives. The camera sits zoomed out on the overview, travels in when an area opens and back out when it closes. Chosen from five motions tried side by side.
 - 2026-10-12: Accent colour is amber on warm neutrals, chosen over green, indigo and violet.
+- 2026-10-12: Typeface stays Manrope, kept over Bricolage Grotesque, Plus Jakarta Sans, Outfit and a headings-only mix.

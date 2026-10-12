@@ -36,6 +36,7 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 
 ## Look
 - Accent: amber on warm neutrals. Chosen from four palettes tried side by side on 2026-10-12.
+- Type: Manrope (weights 500 to 800) for everything, with a system sans fallback. Kept after trying four alternatives on 2026-10-12.
 - Tokens (light / dark), as defined at the top of `mockups/prototype.html`:
   - `--bg` #f7f5f1 / #13110e, `--surface` #ffffff / #1c1915, `--line` #ddd8ce / #343029
   - `--text` #201b14 / #f0ece5, `--muted` #655d50 / #aaa294, `--track` #e9e4da / #2c2822

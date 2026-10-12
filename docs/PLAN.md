@@ -13,7 +13,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [x] Motion: You pulses until the map is opened; lines draw out of the parent and each node pops in when its line arrives; the camera sits zoomed out on the overview, travels in when an area opens and back out when it closes (mocked)
 - [ ] Settle look: colours, type, name and icon; write them into CLAUDE.md
   - [x] Colour: amber on warm neutrals (burnt orange in light, bright amber in dark); tokens are in CLAUDE.md
-  - [ ] Type
+  - [x] Type: Manrope throughout (kept after trying Bricolage Grotesque, Plus Jakarta Sans, Outfit and a mix)
   - [ ] Name
   - [ ] Icon
 
