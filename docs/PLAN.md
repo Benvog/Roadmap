@@ -20,7 +20,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 ## Phase 2: Data and setup
 - [x] Data model (tables and links): approved, in `docs/DATA-MODEL.md`
 - [x] Create Supabase project; tables + row-level security (`supabase/schema.sql` run on 2026-10-12; project details in `js/config.js`)
-- [ ] Magic-link sign-in working locally
+- [x] Magic-link sign-in working locally (`index.html`, `css/app.css`, `js/main.js`, `js/store.js`). Signed in on the PC on 2026-10-12, and a signed-in database check passed: own rows save and read back, a row under another login and a goal under a foreign area are refused, and deleting an area removes its goal
 - [ ] `js/store.js` data layer
 - [ ] View offline: keep a copy of the last loaded data on the device and show it, read-only, with an "offline" note when there is no connection
 

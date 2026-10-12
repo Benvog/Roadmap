@@ -14,6 +14,8 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - `"%LOCALAPPDATA%\Programs\Python\Python313\python.exe" -m http.server 8000` from the repo root,
   then open http://localhost:8000. (Plain `python` is broken on this PC.)
 - Phone preview over Wi-Fi: use the PC's LAN IP; the network may need to be set to Private.
+- Sign-in links only return to addresses allowed in Supabase (Authentication, URL Configuration). `http://localhost:8000` is allowed; the GitHub Pages address has to be added at deploy.
+- Supabase's built-in email only sends a few sign-in emails an hour.
 
 ## Rules
 - Mobile-first: design at 360–430px wide first, then check desktop.
