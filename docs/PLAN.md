@@ -10,6 +10,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [x] Add flows: a "+" at the end of each branch for area, goal, path, milestone, task and habit (mocked in `mockups/prototype.html`)
 - [x] Edit flows: a pencil on an unfolded area or target, on a road's header, and Edit in the milestone and habits sheets, for rename, due date, moving an area and delete with a confirmation (mocked in `mockups/prototype.html`)
 - [x] You opens and folds the map: the app starts on You alone, a tap opens the areas, another tap folds everything back (mocked)
+- [x] Motion: You pulses until the map is opened; lines draw out of the parent and each node pops in when its line arrives; the camera sits zoomed out on the overview, travels in when an area opens and back out when it closes (mocked)
 - [ ] Settle look: colours, type, name and icon; write them into CLAUDE.md
 
 ## Phase 2: Data and setup

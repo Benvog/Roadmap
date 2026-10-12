@@ -55,3 +55,4 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 - 2026-10-12: Money is logged on the path that earned it ("Log amount" on the path's road, with a note) and rolls up to the target. Funding a milestone such as the trading deposit is logged separately on that milestone.
 - 2026-10-12: Things are added with a "+" where they will live (next to You for areas, at the end of each branch, road, task list and habit list). Editing goes through an Edit button on each thing's own screen, so a plain tap only explores.
 - 2026-10-12: The map starts on You alone. Tapping You opens the areas; tapping it again folds the whole map back.
+- 2026-10-12: Motion: You pulses until the map is opened. Opening draws a line out of the parent and pops each node in when its line arrives. The camera sits zoomed out on the overview, travels in when an area opens and back out when it closes. Chosen from five motions tried side by side.

@@ -79,7 +79,8 @@
   }
   #viewport.dragging { cursor: grabbing; }
   #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-  #world.glide { transition: transform .35s ease; }
+  #world.glide { transition: transform .5s ease; }
+  #viewport.glide { transition: background-position .5s ease, background-size .5s ease; }
   #edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
   #edges path { fill: none; stroke: var(--line); stroke-width: 2; }
   #edges path.done { stroke: var(--accent); }
@@ -87,8 +88,15 @@
   #edges path.arrow { fill: var(--accent); stroke: none; }
 
   .node { position: absolute; transform: translate(-50%, -50%); cursor: pointer; }
-  .node.new { animation: pop .25s ease; }
-  @keyframes pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.85); } }
+  .node.new { animation: pop .3s ease; }
+  .node.leaving { opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.5); } }
+  /* You pulses until the map is opened */
+  .you.closed::after {
+    content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent);
+    animation: ring 1.8s ease-out infinite;
+  }
+  @keyframes ring { from { transform: scale(1); opacity: .9; } to { transform: scale(2); opacity: 0; } }
 
   .you {
     width: 64px; height: 64px; border-radius: 50%; border: 0;
@@ -281,8 +289,8 @@
   .btn[disabled] { opacity: .55; cursor: not-allowed; }
 
   @media (prefers-reduced-motion: reduce) {
-    .node.new, .stop.next .dot { animation: none; }
-    #world.glide { transition: none; }
+    .node.new, .stop.next .dot, .you.closed::after { animation: none; }
+    #world.glide, #viewport.glide { transition: none; }
   }
 </style>
 
@@ -705,7 +713,7 @@ function layout() {
     if (!open.has(n.id)) return;
     if (n.type === 'area' || n.src.target) {
       const area = n.type === 'area';
-      nodes.push({ id: n.id + '-edit', type: 'edit', kind: area ? 'area' : 'target', src: n.src, x: x + (area ? 38 : 76), y: y - (area ? 38 : 30) });
+      nodes.push({ id: n.id + '-edit', type: 'edit', kind: area ? 'area' : 'target', src: n.src, parent: n, x: x + (area ? 38 : 76), y: y - (area ? 38 : 30) });
     }
     const [dx, dy] = d;
     let px = dy, py = -dx;
@@ -737,14 +745,14 @@ function layout() {
     edges.push({ a: you, b: a, straight: true });
     place(a, d[0] * R, d[1] * R, d, you);
   });
-  nodes.push({ id: 'add-area', type: 'add', add: 'area', x: 40, y: 40 });
+  nodes.push({ id: 'add-area', type: 'add', add: 'area', parent: you, x: 40, y: 40 });
   return { nodes, edges };
 }
 
 function nodeHTML(n) {
   const at = `left:${n.x}px;top:${n.y}px`;
   const cls = (seen.has(n.id) ? '' : ' new') + (open.has(n.id) ? ' open' : '');
-  if (n.type === 'you') return `<button class="node you" data-id="you" style="${at}" aria-expanded="${open.has('you')}">You</button>`;
+  if (n.type === 'you') return `<button class="node you${open.has('you') ? '' : ' closed'}" data-id="you" style="${at}" aria-expanded="${open.has('you')}">You</button>`;
   if (n.type === 'area') {
     const p = percent(n.src.goals.flatMap(stepsUnder));
     return `<button class="node area${cls}" data-id="${n.id}" style="${at};--p:${p}" aria-expanded="${open.has(n.id)}">
@@ -775,36 +783,114 @@ function edgePath({ a, b, straight, vertical }) {
   const m = (a.x + b.x) / 2;
   return `M${a.x},${a.y} C${m},${a.y} ${m},${b.y} ${b.x},${b.y}`;
 }
+// ---------- Opening motion: each line draws out of the parent, then its node pops in, one after another ----------
+const ease = (t) => 1 - (1 - t) ** 3;
+const unit = (t) => Math.min(1, Math.max(0, t));
+const mix = (a, b, k) => ({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+const LINE_EACH = 110, LINE_TIME = 240;   // ms between siblings, and for one line to draw
+
+// Where every node is drawn right now, so a change can animate from it.
+let shown = {}, lastEdges = [], anim = 0, snap = 0;
 function renderMap() {
   const focused = document.activeElement?.dataset?.id;
   const { nodes, edges } = layout();
+  const old = byId;
   byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-  let svg = edges.map((e) => `<path class="${e.done ? 'done' : ''}" d="${edgePath(e)}"/>`).join('');
-  // Remote work feeds the trading deposit: drawn when both milestones are showing.
-  const from = byId['remote-3'], to = byId['trading-2'];
-  if (from && to) {
-    const x1 = from.x + 78, x2 = to.x - 78 - 7;
-    svg += `<path class="feeds" d="M${x1},${from.y} C${x1 + 14},${from.y} ${x2 - 14},${to.y} ${x2},${to.y}"/>
-      <path class="arrow" d="M${x2 - 1},${to.y - 5} l8,5 -8,5z"/>`;
+
+  // A node starts where it is now; a new one starts where its parent is now, and takes its turn among its siblings.
+  const start = (n) => {
+    for (let p = n; p; p = p.parent) if (shown[p.id]) return { ...shown[p.id] };
+    return { x: n.x, y: n.y };
+  };
+  const from = {}, to = {}, els = {}, turn = {}, count = {};
+  for (const n of nodes) {
+    from[n.id] = start(n);
+    to[n.id] = { x: n.x, y: n.y };
+    if (!shown[n.id]) { const key = n.parent?.id || ''; turn[n.id] = count[key] = (count[key] ?? -1) + 1; }
   }
-  edgesEl.innerHTML = svg;
-  nodesEl.innerHTML = nodes.map(nodeHTML).join('');
+
+  // Nodes that are going away fold back into the nearest parent that stays, and fade.
+  const leaving = [...nodesEl.children].filter((el) => !byId[el.dataset.id] && shown[el.dataset.id]);
+  for (const id in shown) if (!byId[id] && !leaving.some((el) => el.dataset.id === id)) delete shown[id];
+  for (const el of leaving) {
+    const id = el.dataset.id;
+    let p = old[id]?.parent;
+    while (p && !byId[p.id]) p = p.parent;
+    from[id] = { ...shown[id] };
+    to[id] = p ? { x: byId[p.id].x, y: byId[p.id].y } : from[id];
+    el.classList.remove('new');
+    el.classList.add('leaving');
+    el.style.visibility = '';
+    els[id] = el;
+  }
+  const holder = document.createElement('div');
+  holder.innerHTML = nodes.map(nodeHTML).join('');
+  const fresh = [...holder.children];
+  for (const el of fresh) els[el.dataset.id] = el;
+  nodesEl.replaceChildren(...leaving, ...fresh);
+
+  const live = edges.map((e) => ({ a: e.a.id, b: e.b.id, straight: e.straight, vertical: e.vertical, done: e.done }));
+  const fading = lastEdges.filter((e) => !byId[e.b] && to[e.a] && to[e.b]);
+  lastEdges = live;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const D = still ? 0 : Math.max(340, LINE_TIME + LINE_EACH * Math.max(0, ...Object.values(turn)));
+  if (!still) for (const id in turn) { els[id].classList.remove('new'); els[id].style.visibility = 'hidden'; }
+  const t0 = performance.now();
+  cancelAnimationFrame(anim);
+  clearTimeout(snap);
+  const frame = (now) => {
+    const ms = Math.min(D, Math.max(0, now - t0)), done = ms >= D, shift = done ? 1 : ease(unit(ms / 340));
+    const tips = {};
+    for (const id in to) {
+      let p;
+      if (id in turn && !still) {
+        // The line's tip travels; the node waits hidden in its place until the tip arrives.
+        const t = done ? 1 : unit((ms - LINE_EACH * turn[id]) / LINE_TIME);
+        tips[id] = mix(from[id], to[id], ease(t));
+        p = to[id];
+        if (t >= 1 && els[id].style.visibility) { els[id].style.visibility = ''; els[id].classList.add('new'); }
+      } else p = mix(from[id], to[id], shift);
+      shown[id] = { x: p.x, y: p.y };
+      els[id].style.left = p.x + 'px';
+      els[id].style.top = p.y + 'px';
+    }
+    const d = (e) => edgePath({ ...e, a: shown[e.a], b: tips[e.b] || shown[e.b] });
+    let svg = live.map((e) => `<path class="${e.done ? 'done' : ''}" d="${d(e)}"/>`).join('')
+      + (done ? '' : fading.map((e) => `<path style="opacity:${1 - shift}" d="${d(e)}"/>`).join(''));
+    // Remote work feeds the trading deposit: drawn when both milestones are showing.
+    const a = byId['remote-3'] && shown['remote-3'], b = byId['trading-2'] && shown['trading-2'];
+    if (a && b) {
+      const x1 = a.x + 78, x2 = b.x - 78 - 7;
+      svg += `<path class="feeds" d="M${x1},${a.y} C${x1 + 14},${a.y} ${x2 - 14},${b.y} ${x2},${b.y}"/>
+        <path class="arrow" d="M${x2 - 1},${b.y - 5} l8,5 -8,5z"/>`;
+    }
+    edgesEl.innerHTML = svg;
+    if (!done) { anim = requestAnimationFrame(frame); return; }
+    for (const el of leaving) { delete shown[el.dataset.id]; el.remove(); }
+  };
+  frame(t0);
+  // If frames stop coming (a hidden tab), still land on the final layout.
+  snap = setTimeout(() => { cancelAnimationFrame(anim); frame(t0 + D + 1); }, D + 80);
+
   seen = new Set(nodes.map((n) => n.id));
-  if (focused) nodesEl.querySelector(`[data-id="${focused}"]`)?.focus({ preventScroll: true });
+  if (focused) nodesEl.querySelector(`[data-id="${focused}"]:not(.leaving)`)?.focus({ preventScroll: true });
   renderStrip();
 }
 function apply(glide) {
   world.classList.toggle('glide', !!glide);
+  vp.classList.toggle('glide', !!glide);
   world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.k})`;
   vp.style.backgroundSize = `${26 * view.k}px ${26 * view.k}px`;
   vp.style.backgroundPosition = `${view.x}px ${view.y}px`;
 }
+// The overview sits a little further out; opening an area travels in to full size, and closing it travels back.
 function centre(glide) {
-  Object.assign(view, { x: vp.clientWidth / 2, y: vp.clientHeight * 0.45, k: 1 });
+  Object.assign(view, { x: vp.clientWidth / 2, y: vp.clientHeight * 0.45, k: 0.82 });
   apply(glide);
 }
 function focusOn(n) {
   // Put the node on the side it grows away from, clear of the top bar and the habits strip.
+  view.k = 1;
   const w = vp.clientWidth, h = vp.clientHeight - 70, [dx, dy] = n.d;
   const deeper = n.type === 'area' ? 0 : 80;
   view.x = w / 2 - dx * (w / 2 - 84) - n.x * view.k;
@@ -837,6 +923,8 @@ nodesEl.addEventListener('click', (e) => {
   if (open.has(n.id)) open.delete(n.id); else open.add(n.id);
   renderMap();
   if (open.has(n.id)) focusOn(byId[n.id]);
+  else if (n.type === 'area') centre(true);
+  else focusOn(byId[n.parent.id]);
 });
 
 const pts = new Map();
