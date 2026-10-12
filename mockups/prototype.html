@@ -5,32 +5,32 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  /* Layout: one screen at a time (options, map, road), phone-first, a single green accent on tinted neutrals. */
+  /* Layout: one screen at a time (options, map, road), phone-first, a single amber accent on warm neutrals. */
   :root {
-    --bg: #f4f6f4;
+    --bg: #f7f5f1;
     --surface: #ffffff;
-    --line: #d5dcd8;
-    --text: #15201c;
-    --muted: #55625c;
-    --accent: #0b7a5e;
+    --line: #ddd8ce;
+    --text: #201b14;
+    --muted: #655d50;
+    --accent: #9c5200;
     --danger: #b3261e;
     --on-danger: #ffffff;
     --on-accent: #ffffff;
-    --accent-soft: #e2f1ec;
-    --track: #e3e8e5;
-    --shadow: 0 1px 2px rgba(21, 32, 28, .06), 0 6px 16px rgba(21, 32, 28, .06);
+    --accent-soft: #f8ead6;
+    --track: #e9e4da;
+    --shadow: 0 1px 2px rgba(32, 27, 20, .06), 0 6px 16px rgba(32, 27, 20, .06);
     --font: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #0e1312; --surface: #171d1b; --line: #2b3531; --text: #e9efec; --muted: #9daaa4;
-      --accent: #45d1a6; --danger: #f2b8b5; --on-danger: #3b0b08; --on-accent: #0e1312; --accent-soft: #16302a; --track: #28312e; --shadow: none;
+      --bg: #13110e; --surface: #1c1915; --line: #343029; --text: #f0ece5; --muted: #aaa294;
+      --accent: #ffb454; --danger: #f2b8b5; --on-danger: #3b0b08; --on-accent: #1a1206; --accent-soft: #3a2a10; --track: #2c2822; --shadow: none;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #0e1312; --surface: #171d1b; --line: #2b3531; --text: #e9efec; --muted: #9daaa4;
-    --accent: #45d1a6; --danger: #f2b8b5; --on-danger: #3b0b08; --on-accent: #0e1312; --accent-soft: #16302a; --track: #28312e; --shadow: none;
+    --bg: #13110e; --surface: #1c1915; --line: #343029; --text: #f0ece5; --muted: #aaa294;
+    --accent: #ffb454; --danger: #f2b8b5; --on-danger: #3b0b08; --on-accent: #1a1206; --accent-soft: #3a2a10; --track: #2c2822; --shadow: none;
     color-scheme: dark;
   }
 

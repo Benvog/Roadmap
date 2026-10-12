@@ -33,3 +33,14 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - The same page is published privately for phone testing at https://claude.ai/artifact/KC5KC9HxN1Eziw3dtz1DLM.
   To update it, publish the file without its first two lines (the doctype and `<html>`/meta line) to that URL.
 - `mockups/areas-map.html` is the earlier list of areas, kept as the future List view.
+
+## Look
+- Accent: amber on warm neutrals. Chosen from four palettes tried side by side on 2026-10-12.
+- Tokens (light / dark), as defined at the top of `mockups/prototype.html`:
+  - `--bg` #f7f5f1 / #13110e, `--surface` #ffffff / #1c1915, `--line` #ddd8ce / #343029
+  - `--text` #201b14 / #f0ece5, `--muted` #655d50 / #aaa294, `--track` #e9e4da / #2c2822
+  - `--accent` #9c5200 / #ffb454, `--on-accent` #ffffff / #1a1206, `--accent-soft` #f8ead6 / #3a2a10
+  - `--danger` #b3261e / #f2b8b5, `--on-danger` #ffffff / #3b0b08
+- Light-theme accent is a burnt orange on purpose: a bright amber fails contrast as text and behind white labels.
+- Every text pair is at least 4.5:1 (worst is accent on accent-soft in light, 4.9:1).
+- `mockups/areas-map.html` still uses the earlier green and needs these tokens when it becomes the List view.
