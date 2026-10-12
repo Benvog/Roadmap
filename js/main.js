@@ -10,7 +10,7 @@ function linkError() {
   const params = new URLSearchParams(location.hash.slice(1) || location.search);
   if (!params.get('error') && !params.get('error_code')) return '';
   history.replaceState(null, '', location.pathname);
-  return 'That sign-in link has expired or was already used. Send yourself a new one.';
+  return 'That sign-in link did not work. It may have expired, been used already, or been opened in a different browser. Send yourself a new one.';
 }
 
 function showSignIn({ email = '', error = '' } = {}) {
@@ -57,7 +57,7 @@ function showLinkSent(address) {
     ${brand}
     <h1 tabindex="-1" id="sent-title">Check your email</h1>
     <p>We sent a sign-in link to <span class="email">${esc(address)}</span>.</p>
-    <p class="muted">Open it on this device and you'll land back here, signed in. It can take a minute to arrive.</p>
+    <p class="muted">Open it in this same browser and you'll land back here, signed in. It can take a minute to arrive.</p>
     <button class="btn wide" type="button" id="other-email">Use a different email</button>
   </div></div>`;
   document.getElementById('sent-title').focus();

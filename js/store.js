@@ -1,8 +1,9 @@
 // The only module that talks to Supabase. Everything else goes through these functions.
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// The Supabase library is a copy kept in js/vendor (loaded by index.html), not fetched from a CDN at run time.
+// PKCE ties a sign-in link to the browser that asked for it, so a link made by someone else cannot sign this browser in.
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'pkce' } });
 
 // ---------- Sign-in ----------
 export async function currentUser() {

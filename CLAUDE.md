@@ -7,7 +7,8 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 ## Stack
 - Static site: plain HTML, CSS and JavaScript (ES modules), no build step.
 - Supabase (free tier) for the database and email magic-link login, with row-level security
-  so each user only sees their own rows. `supabase-js` loaded from a CDN.
+  so each user only sees their own rows. `supabase-js` is a pinned copy in `js/vendor` (see its README), not loaded from a CDN.
+- Sign-in uses the PKCE flow: a link only works in the browser that asked for it.
 - Hosted on GitHub Pages (public repo). Installable as a PWA.
 
 ## Run locally
