@@ -16,13 +16,13 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - Each slice has gone the same way and should keep doing so: build it, extend `tests/drive.html`, run
   `bash tests/run.sh`, look at phone-width screenshots, then ask the user to try it signed in at
   http://localhost:8000 before committing.
-- Not yet in the real app: the List view, view-offline, and everything in Phase 5 (installing to the home
-  screen, the GitHub Pages deploy, the accessibility check).
+- The app is live at https://benvog.github.io/Roadmap/ and the user has signed in to it on their phone.
+- Not yet done: installing to the home screen (PWA), view-offline, the List view, the accessibility check, and
+  checking every "Done looks like" item in the PRD.
 
 ## Stack
 - Static site: plain HTML, CSS and JavaScript (ES modules), no build step.
-- Supabase (free tier) for the database and email sign-in links, with row-level security
-  so each user only sees their own rows.
+- Supabase (free tier) for the database and sign-in, with row-level security so each user only sees their own rows.
 - `supabase-js` is a pinned copy in `js/vendor` (see its README), loaded by `index.html` as `window.supabase`.
   Do not load code from a CDN at run time. Google Fonts (a stylesheet) is the only outside resource.
 - Sign-in is by email and password (`signInWithPassword` in `store.js`). A password is set from the account
@@ -114,17 +114,18 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - No reminders, charts/history or sharing in v1 (see PRD "Not building").
 
 ## Security
-- A background security review runs on each commit and has found real issues five times. Treat its
+- A background security review runs on each commit and has found real issues six times. Treat its
   findings as work to do: explain the finding to the user in plain terms, fix it, and say what was tested.
 - Decisions that came from it: child rows must share their parent's owner (composite foreign keys);
   sign-in uses PKCE; no third-party code is fetched at run time; when the signed-in account changes, the running
   app is stopped before the next one starts, and closing the sheet empties it. Anything kept on the device for
   one account (the offline copy, when it is built) must be kept per account and cleared on sign-out.
-- Changing a password asks for the current one when the session began with a password (`signedInWithPassword`
-  in `store.js` reads how the session started). A session that began with an emailed link may set one without
-  it: that is the recovery route for a forgotten password. This check is in the app; Supabase's own "Secure
-  password change" setting (Authentication, Sign In / Providers, Email) enforces it on the server and is
-  recommended to the user; not confirmed done.
+- Changing a password asks for the current one unless the session clearly began with an emailed link
+  (`needsCurrentPassword` in `js/session.js`, checked in `tests/model.test.mjs`). That link is the recovery route
+  for a forgotten password. Any decision like this must fail closed: a missing, unreadable or unfamiliar
+  answer means "ask". This check is in the app; Supabase's own "Secure
+  password change" setting (Authentication, Sign In / Providers, Email) enforces it on the server. The user
+  turned it on on 2026-10-13.
 - Everything in the repo is published on the live site, including `tests/` and `mockups/`. A page there runs on
   the same address as the real app and can reach a signed-in person's session. So a test page must never load
   a path taken from its address, and the pages that script taps (`tests/shot.html`, `tests/drive.html`) refuse

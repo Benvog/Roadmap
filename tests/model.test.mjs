@@ -1,6 +1,7 @@
 // Checks js/model.js. Run with: node tests/model.test.mjs
 import assert from 'node:assert/strict';
 import * as model from '../js/model.js';
+import { needsCurrentPassword } from '../js/session.js';
 
 const data = {
   areas: [{ id: 'money', position: 0 }, { id: 'health', position: 1 }],
@@ -107,5 +108,20 @@ assert.equal(status(thrice, ['2026-10-12', '2026-10-13', '2026-10-14'], '2026-10
 assert.equal(status(thrice, ['2026-10-12', '2026-10-13', '2026-10-14'], '2026-10-14').due, true, 'unless today is one of the days it was done');
 assert.equal(status(thrice, ['2026-10-11'], '2026-10-12').week, 0, 'Sunday\'s check-in belongs to last week');
 assert.equal(ids(model.habitsIn(data, 'money')), 'h1');
+
+// ---------- How a session began: asking for the current password must fail closed ----------
+const token = (claims) => 'h.' + Buffer.from(JSON.stringify(claims)).toString('base64url') + '.s';
+assert.equal(needsCurrentPassword(token({ amr: [{ method: 'password', timestamp: 100 }] })), true);
+assert.equal(needsCurrentPassword(token({ amr: [{ method: 'otp', timestamp: 100 }] })), false, 'an emailed link is the recovery route');
+assert.equal(needsCurrentPassword(token({ amr: [{ method: 'magiclink', timestamp: 100 }] })), false);
+assert.equal(needsCurrentPassword(token({ amr: [{ method: 'otp', timestamp: 100 }, { method: 'password', timestamp: 200 }] })), true, 'the newest way in decides, whatever the order');
+assert.equal(needsCurrentPassword(token({ amr: [{ method: 'token_refresh', timestamp: 300 }, { method: 'otp', timestamp: 100 }] })), false, 'a refresh is not a way in');
+assert.equal(needsCurrentPassword(token({ amr: [{ method: 'token_refresh', timestamp: 300 }, { method: 'password', timestamp: 100 }] })), true);
+assert.equal(needsCurrentPassword(token({})), true, 'no record of how the session began: ask');
+assert.equal(needsCurrentPassword(token({ amr: [] })), true);
+assert.equal(needsCurrentPassword(token({ amr: [{ method: 'oauth', timestamp: 100 }] })), true, 'an unfamiliar way in: ask');
+assert.equal(needsCurrentPassword(token({ amr: 'otp' })), true, 'a malformed record: ask');
+assert.equal(needsCurrentPassword('not-a-token'), true);
+assert.equal(needsCurrentPassword(''), true);
 
 console.log('model: all checks passed');

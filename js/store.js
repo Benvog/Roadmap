@@ -1,5 +1,6 @@
 // The only module that talks to Supabase. Everything else goes through these functions.
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+import { needsCurrentPassword } from './session.js';
 
 // The Supabase library is a copy kept in js/vendor (loaded by index.html), not fetched from a CDN at run time.
 // PKCE ties a sign-in link to the browser that asked for it, so a link made by someone else cannot sign this browser in.
@@ -30,20 +31,17 @@ export async function signInWithPassword(email, password) {
   if (error) throw error;
 }
 
-// True when this session was started with the account's password, false when it came from an emailed link.
-// Supabase records how a session began in its token (the "amr" claim, newest first).
+// True when changing the password should ask for the current one: always, unless this session clearly began
+// with an emailed link (see session.js).
 export async function signedInWithPassword() {
   const { data } = await supabase.auth.getSession();
-  try {
-    const claims = JSON.parse(atob(data.session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return claims.amr?.[0]?.method === 'password';
-  } catch (err) {
-    return true;   // if it cannot be read, take the careful path and ask for the current password
-  }
+  return needsCurrentPassword(data.session?.access_token || '');
 }
 
 // Sets or changes the signed-in user's password. `current` is checked first when it is given; the app requires
 // it for anyone who signed in with a password, so an unlocked, signed-in device is not enough to take the account.
+// This check runs in the app, so it does not stop someone who already holds the session token; Supabase's own
+// "Secure password change" setting is what enforces it on the server.
 export async function setPassword(password, current) {
   if (current !== undefined) {
     const { data } = await supabase.auth.getSession();
