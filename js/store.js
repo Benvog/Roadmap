@@ -30,8 +30,26 @@ export async function signInWithPassword(email, password) {
   if (error) throw error;
 }
 
-// Sets or changes the signed-in user's password.
-export async function setPassword(password) {
+// True when this session was started with the account's password, false when it came from an emailed link.
+// Supabase records how a session began in its token (the "amr" claim, newest first).
+export async function signedInWithPassword() {
+  const { data } = await supabase.auth.getSession();
+  try {
+    const claims = JSON.parse(atob(data.session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return claims.amr?.[0]?.method === 'password';
+  } catch (err) {
+    return true;   // if it cannot be read, take the careful path and ask for the current password
+  }
+}
+
+// Sets or changes the signed-in user's password. `current` is checked first when it is given; the app requires
+// it for anyone who signed in with a password, so an unlocked, signed-in device is not enough to take the account.
+export async function setPassword(password, current) {
+  if (current !== undefined) {
+    const { data } = await supabase.auth.getSession();
+    const check = await supabase.auth.signInWithPassword({ email: data.session.user.email, password: current });
+    if (check.error) throw Object.assign(check.error, { wrongCurrent: check.error.status === 400 });
+  }
   const { error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
 }

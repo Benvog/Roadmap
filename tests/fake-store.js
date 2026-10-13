@@ -46,7 +46,15 @@ export function createFakeStore({ areas = [], failing = false } = {}) {
     guard('undoCheckIn');
     db.habit_checkins = db.habit_checkins.filter((c) => !(c.habit_id === habitId && c.day === day));
   };
-  store.setPassword = async (password) => { guard('setPassword'); store.password = password; };
+  // The stand-in starts as an account that signed in with the password "old password 1".
+  store.password = 'old password 1';
+  store.byPassword = true;
+  store.signedInWithPassword = async () => store.byPassword;
+  store.setPassword = async (password, current) => {
+    guard('setPassword' + (current === undefined ? ' (no current asked)' : ''));
+    if (current !== undefined && current !== store.password) throw Object.assign(new Error('Invalid login credentials'), { status: 400, wrongCurrent: true });
+    store.password = password;
+  };
   store.signOut = async () => { store.signedOut = true; };
   store.rows = (table) => db[table];
   return store;

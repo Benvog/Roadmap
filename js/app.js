@@ -512,16 +512,22 @@ export function startApp(root, user, store) {
   }
 
   // A password is how to sign in on another device; an emailed link only works in the browser that asked for it.
-  function openPassword() {
-    openForm({ kicker: user.email, title: 'Set a password', submit: 'Save password',
-      fields: [{ id: 'password', label: 'New password (8 characters or more)', type: 'password', autocomplete: 'new-password' },
-        { id: 'again', label: 'The same password again', type: 'password', autocomplete: 'new-password' }],
+  // Someone who signed in with a password must give it again to change it. Someone who came in by an emailed
+  // link has just proved they own the email, which is how a forgotten password is replaced.
+  async function openPassword() {
+    const needsCurrent = await store.signedInWithPassword();
+    const fresh = (id, label) => ({ id, label, type: 'password', autocomplete: 'new-password' });
+    openForm({ kicker: user.email, title: needsCurrent ? 'Change password' : 'Set a password', submit: 'Save password',
+      fields: [...(needsCurrent ? [{ id: 'current', label: 'Current password', type: 'password', autocomplete: 'current-password' }] : []),
+        fresh('password', 'New password (8 characters or more)'), fresh('again', 'The same new password again')],
       onSubmit: async (v) => {
-        if (v.password.length < 8) throw new FormError('Use 8 characters or more.');
-        if (v.password !== v.again) throw new FormError('The two passwords are not the same.');
+        if (needsCurrent && !v.current) throw new FormError('Enter your current password.');
+        if (v.password.length < 8) throw new FormError('Use 8 characters or more for the new password.');
+        if (v.password !== v.again) throw new FormError('The two new passwords are not the same.');
         try {
-          await store.setPassword(v.password);
+          await store.setPassword(v.password, needsCurrent ? v.current : undefined);
         } catch (err) {
+          if (err?.wrongCurrent) throw new FormError('The current password is not right.');
           // Supabase explains a refused password (too weak, or the same as the old one); a lost connection has no status.
           throw err?.status ? new FormError(err.message || 'That password was not accepted. Try a different one.') : err;
         }

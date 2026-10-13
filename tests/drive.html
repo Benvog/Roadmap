@@ -1,5 +1,8 @@
 <!doctype html><body style="margin:0;background:#888"><iframe id="f" style="width:390px;height:844px;border:0;display:block"></iframe>
 <script>
+// These helper pages drive whatever they load with scripted taps, so they only run on this PC. On the public
+// site they would let a crafted link tap around inside a signed-in person's real app.
+if (!['localhost', '127.0.0.1'].includes(location.hostname)) throw new Error('This test page only runs on localhost.');
 const f = document.getElementById('f'), run = new URLSearchParams(location.search).get('run');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const report = (name, lines) => fetch('/__result?run=' + run + '&name=' + name + '&log=' + encodeURIComponent(lines.join(' ## ')));
@@ -250,12 +253,21 @@ async function scenario(name, query, steps, page) {
   }, 'signin');
   await scenario('account', '?theme=light', async (t, say) => {
     t.tap('#account'); say('account sheet', t.sheet().textContent.replace(/\s+/g, ' ').trim());
-    t.tap('[data-act="password"]'); say('password form', t.sheet().querySelector('h2').textContent + ' | fields: ' + [...t.d.querySelectorAll('#sheet-form input')].map((i) => i.type + '/' + i.autocomplete).join(', '));
-    t.fill('f-password', 'short'); t.fill('f-again', 'short'); t.tap('#sheet-form [type=submit]'); await wait(200); say('too short', t.q('#sheet-error').textContent);
+    const fields = () => [...t.d.querySelectorAll('#sheet-form input')].map((i) => t.d.querySelector('label[for=' + i.id + ']').textContent).join(' | ');
+    t.tap('[data-act="password"]'); await wait(200);
+    say('signed in with a password', t.sheet().querySelector('h2').textContent + ' | asks for: ' + fields());
+    t.fill('f-password', 'long enough 1'); t.fill('f-again', 'long enough 1'); t.tap('#sheet-form [type=submit]'); await wait(200); say('no current password', t.q('#sheet-error').textContent);
+    t.fill('f-current', 'a wrong guess'); t.tap('#sheet-form [type=submit]'); await wait(200);
+    say('wrong current password', t.q('#sheet-error').textContent + ' | password unchanged: ' + (t.store.password === 'old password 1'));
+    t.fill('f-current', 'old password 1'); t.fill('f-password', 'short'); t.fill('f-again', 'short'); t.tap('#sheet-form [type=submit]'); await wait(200); say('too short', t.q('#sheet-error').textContent);
     t.fill('f-password', 'long enough 1'); t.fill('f-again', 'long enough 2'); t.tap('#sheet-form [type=submit]'); await wait(200); say('not the same', t.q('#sheet-error').textContent);
     t.store.failing = true; t.fill('f-again', 'long enough 1'); t.tap('#sheet-form [type=submit]'); await wait(200); say('no connection', t.q('#sheet-error').textContent); t.store.failing = false;
     t.tap('#sheet-form [type=submit]'); await wait(200);
-    say('saved', t.q('.sheet-note').textContent + ' | password sent: ' + (t.store.password === 'long enough 1') + ' | back on: ' + t.sheet().querySelector('h2').textContent);
+    say('saved', t.q('.sheet-note').textContent + ' | password changed: ' + (t.store.password === 'long enough 1') + ' | back on: ' + t.sheet().querySelector('h2').textContent);
+    t.store.byPassword = false; t.tap('[data-act="password"]'); await wait(200);
+    say('signed in by emailed link', t.sheet().querySelector('h2').textContent + ' | asks for: ' + fields());
+    t.fill('f-password', 'brand new pass'); t.fill('f-again', 'brand new pass'); t.tap('#sheet-form [type=submit]'); await wait(200);
+    say('set without a current one', t.q('.sheet-note').textContent + ' | ' + t.store.calls.at(-1));
   });
   await scenario('empty', '?areas=empty', async (t, say) => {
     say('notice', !t.q('#starter').hidden + ' | ' + t.q('#starter p').textContent);

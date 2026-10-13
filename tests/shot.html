@@ -4,9 +4,13 @@
 // ?q=<query for the page>&taps=<comma list, tapped about 1.5s apart>&page=<app (default) or signin>
 // A tap is a CSS selector (starting with # . or [), or "area:Money" / "goal:Trading" to tap a node by its text,
 // with an optional suffix such as "area:Money-edit" or "goal:Make KES-add" for the small node hanging from it.
+// These helper pages drive whatever they load with scripted taps, so they only run on this PC. On the public
+// site they would let a crafted link tap around inside a signed-in person's real app.
+if (!['localhost', '127.0.0.1'].includes(location.hostname)) throw new Error('This test page only runs on localhost.');
 const p = new URLSearchParams(location.search), f = document.getElementById('f');
 const taps = (p.get('taps') || '').split(',').filter(Boolean);
-f.src = '/tests/' + (p.get('page') || 'app') + '.html?' + (p.get('q') || '');
+const page = p.get('page') === 'signin' ? 'signin' : 'app';   // never a path taken from the address
+f.src = '/tests/' + page + '.html?' + (p.get('q') || '');
 f.onload = async () => {
   const d = f.contentDocument, wait = (ms) => new Promise((r) => setTimeout(r, ms));
   for (let i = 0; i < 50 && !d.querySelector('.node, .card'); i++) await wait(100);

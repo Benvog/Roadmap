@@ -114,12 +114,21 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - No reminders, charts/history or sharing in v1 (see PRD "Not building").
 
 ## Security
-- A background security review runs on each commit and has found real issues four times. Treat its
+- A background security review runs on each commit and has found real issues five times. Treat its
   findings as work to do: explain the finding to the user in plain terms, fix it, and say what was tested.
 - Decisions that came from it: child rows must share their parent's owner (composite foreign keys);
   sign-in uses PKCE; no third-party code is fetched at run time; when the signed-in account changes, the running
   app is stopped before the next one starts, and closing the sheet empties it. Anything kept on the device for
   one account (the offline copy, when it is built) must be kept per account and cleared on sign-out.
+- Changing a password asks for the current one when the session began with a password (`signedInWithPassword`
+  in `store.js` reads how the session started). A session that began with an emailed link may set one without
+  it: that is the recovery route for a forgotten password. This check is in the app; Supabase's own "Secure
+  password change" setting (Authentication, Sign In / Providers, Email) enforces it on the server and is
+  recommended to the user; not confirmed done.
+- Everything in the repo is published on the live site, including `tests/` and `mockups/`. A page there runs on
+  the same address as the real app and can reach a signed-in person's session. So a test page must never load
+  a path taken from its address, and the pages that script taps (`tests/shot.html`, `tests/drive.html`) refuse
+  to run anywhere but localhost.
 - New sign-ups can be switched off in Supabase (Authentication, Sign In / Providers). Recommended to the
   user for a personal app; not confirmed done.
 - Never ask for or store the Supabase `service_role` key or the database password.
