@@ -27,9 +27,10 @@ async function open(query) {
   const tasks = () => [...d.querySelectorAll('.tasks input')].map((c) => (c.checked ? '[x] ' : '[ ] ') + c.closest('label').textContent.trim()).join(' ; ');
   const progress = () => q('#road-progress').textContent.replace(/\s+/g, ' ').trim();
   const strip = () => q('.strip-label').textContent.replace(/\s+/g, ' ').trim() + ' || ' + [...d.querySelectorAll('.habit-chip')].map((c) => (c.getAttribute('aria-pressed') === 'true' ? '[x] ' : '[ ] ') + c.textContent.replace(/\s+/g, ' ').trim()).join(' ; ');
+  const entries = () => [...d.querySelectorAll('.entries li')].map((li) => li.querySelector('span').textContent.replace(/\s+/g, ' ').trim() + ' = ' + li.querySelector('b').textContent).join(' ; ');
   const habitRows = () => [...d.querySelectorAll('.habit-list li')].map((li) => (li.querySelector('input').checked ? '[x] ' : '[ ] ') + li.querySelector('label').textContent.replace(/\s+/g, ' ').trim()).join(' ; ');
   const submit = async (ms = 900) => { tap('#sheet-form [type=submit]'); await wait(ms); };
-  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, stops, tasks, progress, strip, habitRows, store: w.fakeStore };
+  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, stops, tasks, progress, strip, habitRows, entries, store: w.fakeStore };
 }
 async function scenario(name, query, steps) {
   const log = [];
@@ -155,6 +156,45 @@ async function scenario(name, query, steps) {
     t.tapNode('.goal', 'Remote work'); await wait(300); t.d.querySelectorAll('.stop')[1].click(); t.tap('[data-act="done"]'); await wait(500);
     say('all done', t.progress() + ' | finish reached: ' + t.q('.finish').classList.contains('reached'));
     say('page overflow on road', t.d.documentElement.scrollWidth > 390);
+    say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
+  });
+  await scenario('money', '?theme=light&seed=1', async (t, say) => {
+    t.tap(t.node('you')); await wait(1300); t.tapNode('.area', 'Money'); await wait(1000); t.tapNode('.goal', 'Make KES'); await wait(1100);
+    t.tapNode('.goal', 'Remote work'); await wait(300);
+    say('path road', t.progress() + ' | button: ' + !!t.q('#log-open'));
+    t.tap('#log-open'); say('log sheet', t.sheet().querySelector('.kicker').textContent + ' / ' + t.sheet().querySelector('h2').textContent + ' | ' + t.entries());
+    t.tap('#log-form [type=submit]'); say('empty amount', t.q('#sheet-error').textContent + ' (shown ' + !t.q('#sheet-error').hidden + ')');
+    t.fill('log-amount', '5000'); t.fill('log-note', 'Flyer <b>design</b>'); t.tap('#log-form [type=submit]'); await wait(500);
+    say('logged', t.q('.sheet-note').textContent + ' | ' + t.entries() + ' | tags stayed text: ' + !t.q('.entries b b') + ' | card: ' + t.progress());
+    say('saved entry', JSON.stringify(t.store.rows('entries').at(-1), ['goal_id', 'amount', 'note']).replace(/"/g, '') + ' | dated today: ' + (t.store.rows('entries').at(-1).logged_on === new Date().toLocaleDateString('en-CA')));
+    t.store.failing = true; t.fill('log-amount', '700'); t.tap('#log-form [type=submit]'); await wait(500);
+    say('log with no connection', t.q('#sheet-error').textContent + ' | ' + t.entries()); t.store.failing = false;
+    const remove = t.q('[data-remove]'); remove.click(); say('remove asks first', remove.textContent + ' | still there: ' + t.entries());
+    t.q('[data-remove][data-armed]').click(); await wait(500);
+    say('removed', t.q('.sheet-note').textContent + ' | ' + t.entries() + ' | card: ' + t.progress());
+    t.tap('[data-act="close"]'); t.tap('#road-back'); await wait(900);
+    say('map after logging', t.goals());
+
+    t.tapNode('.goal', 'Trading'); await wait(300);
+    t.tap('.add-stop'); t.fill('f-name', 'Backtest 100 trades'); await t.submit(500);
+    t.tap('.add-stop'); t.fill('f-name', 'Deposit & go live'); t.fill('f-fund', '20000'); await t.submit(500);
+    say('locked stop', t.stops());
+    t.d.querySelectorAll('.stop')[1].click();
+    say('locked sheet', t.q('.pill').textContent + ' | ' + t.q('.fund-row').textContent.replace(/\s+/g, ' ').trim() + ' | ' + t.sheet().querySelector('.fund + p').textContent + ' | main button: ' + t.sheet().querySelector('.actions:last-of-type button').textContent + (t.sheet().querySelector('.actions:last-of-type button').disabled ? ' (off)' : ''));
+    t.tap('[data-act="fund"]'); say('funding form', t.sheet().querySelector('h2').textContent + ' | from: ' + [...t.d.querySelectorAll('#f-from option')].map((o) => o.textContent).join(', '));
+    t.tap('#sheet-form [type=submit]'); await wait(200); say('empty funding', t.q('#sheet-error').textContent);
+    t.fill('f-amount', '8000'); t.fill('f-from', t.store.rows('goals').find((g) => g.name === 'Remote work').id); await t.submit(500);
+    t.tap('[data-act="fund"]'); t.fill('f-amount', '4000'); t.fill('f-note', 'gift'); await t.submit(500);
+    say('part funded', t.q('.pill').textContent + ' | ' + t.q('.fund-row').textContent.replace(/\s+/g, ' ').trim() + ' | ' + t.entries() + ' | ' + t.sheet().querySelector('.fund + p').textContent);
+    say('road while part funded', t.stops());
+    t.tap('[data-act="fund"]'); t.fill('f-amount', '8000'); await t.submit(500);
+    say('fully funded', t.q('.pill').textContent + ' | ' + t.q('.fund-row').textContent.replace(/\s+/g, ' ').trim() + ' | ' + t.sheet().querySelector('.fund + p').textContent + ' | ' + t.stops());
+    say('funding does not reduce earnings', 'Remote work earned ' + t.store.rows('entries').filter((e) => e.goal_id === t.store.rows('goals').find((g) => g.name === 'Remote work').id).reduce((s, e) => s + Number(e.amount), 0));
+    const unfund = t.q('[data-unfund]'); unfund.click(); t.q('[data-unfund][data-armed]').click(); await wait(500);
+    say('funding removed locks it again', t.q('.pill').textContent + ' | ' + t.q('.fund-row').textContent.replace(/\s+/g, ' ').trim());
+    t.tap('[data-act="edit"]'); say('edit shows the amount', t.q('#f-fund').value); t.fill('f-fund', ''); await t.submit(500);
+    say('no longer needs funding', t.q('.pill').textContent + ' | funding box: ' + !!t.q('.fund') + ' | ' + t.stops());
+    t.tap('[data-act="close"]');
     say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
   });
   await scenario('habits', '?theme=light', async (t, say) => {

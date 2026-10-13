@@ -3,7 +3,7 @@
 import { createMap } from './map.js';
 import { createRoad } from './road.js';
 import * as model from './model.js';
-import { esc, ICONS, FormError, SAVE_FAILED, niceDate, openForm, showSheet, sheetHead, closeSheet } from './ui.js';
+import { esc, ICONS, FormError, SAVE_FAILED, amount, niceDate, openForm, showSheet, sheetHead, closeSheet } from './ui.js';
 
 const STARTERS = ['Career', 'Health', 'Money', 'Mental'];   // clockwise from the top, so Money sits at the bottom
 const STATE_LABEL = { done: 'Done', next: 'Next step', todo: 'Coming up', locked: 'Locked' };
@@ -52,6 +52,7 @@ export function startApp(root, user, store) {
       onEdit: editGoal,
       onMilestone: openMilestone,
       onAddMilestone: (goal) => onAdd('milestone', goal),
+      onLog: openLog,
     });
     showScreen('map');
     map.centre();
@@ -101,6 +102,16 @@ export function startApp(root, user, store) {
   const setDone = (table, row, done) => change(table, row, { done_at: done ? new Date().toISOString() : null });
   const name = (placeholder, value) => ({ id: 'name', label: 'Name', placeholder, value });
   const dueField = (value) => ({ id: 'due', label: 'Due date (optional)', type: 'date', value });
+  // A milestone with an amount here stays locked until that much has been put toward it.
+  const fundField = (value) => ({ id: 'fund', label: 'Needs funding in KES (optional)', type: 'number', placeholder: 'Locks it until funded', value: value == null ? '' : Number(value) });
+  const dayLabel = (day) => (day === model.localDay() ? 'Today' : niceDate(day));
+  // A "Remove" button asks once before it acts: the first tap arms it, the second goes ahead.
+  const armed = (button) => {
+    if (button.dataset.armed) return true;
+    button.dataset.armed = '1';
+    button.textContent = 'Really remove?';
+    return false;
+  };
   // A whole amount above zero, or null when the field was left empty. Anything else is a mistake to point out.
   function wholeAmount(text) {
     if (text === '') return null;
@@ -157,9 +168,10 @@ export function startApp(root, user, store) {
         } });
     }
     if (kind === 'milestone') {
-      openForm({ kicker: parent.name, title: 'Add a milestone', submit: 'Add milestone', fields: [name('The next big step'), dueField()],
+      openForm({ kicker: parent.name, title: 'Add a milestone', submit: 'Add milestone', fields: [name('The next big step'), dueField(), fundField()],
         onSubmit: async (v) => {
-          await create('milestones', { goal_id: parent.id, name: v.name, due_date: v.due || null, position: model.nextPosition(model.milestonesOf(data, parent.id)) });
+          await create('milestones', { goal_id: parent.id, name: v.name, due_date: v.due || null, fund_amount: wholeAmount(v.fund),
+            position: model.nextPosition(model.milestonesOf(data, parent.id)) });
           closeSheet();
           refresh();
         } });
@@ -251,6 +263,7 @@ export function startApp(root, user, store) {
     const el = showSheet(`${sheetHead(`${goal.name} · milestone ${stops.indexOf(m) + 1} of ${stops.length}`, m.name)}
       <span class="pill ${state}">${STATE_LABEL[state]}</span>
       ${m.due_date ? `<p class="muted">Due ${esc(niceDate(m.due_date))}</p>` : ''}
+      ${m.fund_amount == null ? '' : fundingBox(m)}
       ${tasks.length ? `<ul class="tasks">${tasks.map((t) => `<li><label>
           <input type="checkbox" id="task-${t.id}" data-task="${t.id}" ${t.done_at ? 'checked' : ''}><span>${esc(t.name)}</span></label></li>`).join('')}</ul>`
         : '<p class="muted">No tasks added to this milestone yet.</p>'}
@@ -272,6 +285,9 @@ export function startApp(root, user, store) {
       if (act === 'close') closeSheet();
       if (act === 'add-task') onAdd('task', m);
       if (act === 'edit') editMilestone(m);
+      if (act === 'fund') openFund(m);
+      const unfund = e.target.closest('[data-unfund]');
+      if (unfund && armed(unfund)) attempt(() => destroy('funding', data.funding.find((f) => f.id === unfund.dataset.unfund)));
       // Marking a milestone done ticks its tasks too; marking it not done clears them.
       if (act === 'done' || act === 'undo') {
         attempt(async () => {
@@ -292,13 +308,90 @@ export function startApp(root, user, store) {
     };
   }
 
+  // What has been put toward a milestone that needs funding, where it came from, and a button to add more.
+  function fundingBox(m) {
+    const have = model.fundedOn(data, m.id), need = Number(m.fund_amount), rows = model.fundingOf(data, m.id);
+    const source = (f) => (f.from_goal_id ? data.goals.find((g) => g.id === f.from_goal_id)?.name || 'A deleted path' : 'Other cash');
+    return `<div class="fund">
+        <div class="fund-row"><b>${amount(have)}</b><span class="muted">of ${amount(need)} to unlock</span></div>
+        <span class="bar"><i style="width:${Math.min(100, 100 * have / need)}%"></i></span>
+        ${rows.length ? `<ul class="entries">${rows.map((f) => `<li>
+          <span>${esc(source(f))}${f.note ? ': ' + esc(f.note) : ''}<small>${dayLabel(f.logged_on)}</small></span>
+          <b>${amount(f.amount)}</b><button class="btn tiny" type="button" data-unfund="${f.id}">Remove</button></li>`).join('')}</ul>` : ''}
+      </div>
+      <p class="muted">${have < need ? amount(need - have) + ' to go. It can come from any path, or from other cash.' : 'Fully funded. This milestone is unlocked.'}</p>
+      <div class="actions"><button class="btn" type="button" data-act="fund">+ Add funding</button></div>`;
+  }
+
+  function openFund(m) {
+    const own = m.goal_id;
+    const paths = data.goals.filter((g) => model.kindOf(g) === 'path' && g.id !== own);
+    openForm({ kicker: m.name, title: 'Add funding', submit: 'Add funding',
+      fields: [{ id: 'amount', label: 'Amount in KES', type: 'number', placeholder: '5000' },
+        { id: 'from', label: 'Where it came from', options: [{ value: '', label: 'Other cash' }, ...paths.map((g) => ({ value: g.id, label: g.name }))], value: '' },
+        { id: 'note', label: 'Note (optional)', placeholder: 'A gift, savings' }],
+      onSubmit: async (v) => {
+        const n = wholeAmount(v.amount);
+        if (!n) throw new FormError('Enter an amount above zero.');
+        await create('funding', { milestone_id: m.id, amount: n, from_goal_id: v.from || null, note: v.note || null, logged_on: model.localDay() });
+        refresh();
+        openMilestone(m);
+      } });
+  }
+
+  // ---------- Logging what a path has earned ----------
+  function openLog(goal, notice = '', problem = '') {
+    const rows = model.entriesOf(data, goal.id);
+    const el = showSheet(`${sheetHead(`${goal.name} · ${amount(model.earnedOn(data, goal.id))} earned`, 'Log amount')}
+      ${notice ? `<p class="sheet-note" role="status">${esc(notice)}</p>` : ''}
+      <form id="log-form" novalidate>
+        <div class="field"><label for="log-amount">Amount in KES</label>
+          <input id="log-amount" type="number" inputmode="numeric" min="1" step="1" placeholder="5000" autocomplete="off"></div>
+        <div class="field"><label for="log-note">Note (optional)</label>
+          <input id="log-note" type="text" maxlength="60" placeholder="What was it for?" autocomplete="off"></div>
+        <p class="error" id="sheet-error" role="alert" ${problem ? '' : 'hidden'}>${esc(problem)}</p>
+        <div class="actions"><button class="btn primary" type="submit">Log amount</button></div>
+      </form>
+      <h3>Logged so far</h3>
+      ${rows.length ? `<ul class="entries">${rows.map((x) => `<li>
+        <span>${x.note ? esc(x.note) : 'No note'}<small>${dayLabel(x.logged_on)}</small></span>
+        <b>${amount(x.amount)}</b><button class="btn tiny" type="button" data-remove="${x.id}">Remove</button></li>`).join('')}</ul>`
+        : '<p class="muted">Nothing logged on this path yet.</p>'}`);
+    const busy = () => el.querySelectorAll('button, input').forEach((c) => (c.disabled = true));
+    el.onclick = async (e) => {
+      if (e.target.closest('[data-act="close"]')) return closeSheet();
+      const remove = e.target.closest('[data-remove]');
+      if (!remove || !armed(remove)) return;
+      busy();
+      let failed = '';
+      try { await destroy('entries', rows.find((x) => x.id === remove.dataset.remove)); } catch (err) { failed = SAVE_FAILED; }
+      refresh();
+      openLog(goal, failed ? '' : 'Removed.', failed);
+    };
+    el.querySelector('#log-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const n = Math.floor(Number(el.querySelector('#log-amount').value)), note = el.querySelector('#log-note').value.trim();
+      if (!(n > 0)) {
+        el.querySelector('#sheet-error').textContent = 'Enter an amount above zero.';
+        el.querySelector('#sheet-error').hidden = false;
+        el.querySelector('#log-amount').focus();
+        return;
+      }
+      busy();
+      let failed = '';
+      try { await create('entries', { goal_id: goal.id, amount: n, note: note || null, logged_on: model.localDay() }); } catch (err) { failed = SAVE_FAILED; }
+      refresh();
+      openLog(goal, failed ? '' : 'Logged ' + amount(n) + '.', failed);
+    };
+  }
+
   function editMilestone(m) {
     const goal = data.goals.find((g) => g.id === m.goal_id), tasks = model.tasksOf(data, m.id);
     openForm({ kicker: goal.name, title: 'Edit milestone', submit: 'Save',
-      fields: [name('', m.name), dueField(m.due_date),
+      fields: [name('', m.name), dueField(m.due_date), fundField(m.fund_amount),
         ...tasks.map((t, i) => ({ id: 'task' + i, label: `Task ${i + 1} (clear to remove)`, value: t.name }))],
       onSubmit: async (v) => {
-        await change('milestones', m, { name: v.name, due_date: v.due || null });
+        await change('milestones', m, { name: v.name, due_date: v.due || null, fund_amount: wholeAmount(v.fund) });
         for (const [i, t] of tasks.entries()) {
           if (!v['task' + i]) await destroy('tasks', t);
           else if (v['task' + i] !== t.name) await change('tasks', t, { name: v['task' + i] });

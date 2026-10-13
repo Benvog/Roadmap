@@ -28,6 +28,11 @@ export const areaProgress = (data, areaId) => progress(goalsIn(data, areaId).fla
 export const earnedOn = (data, goalId) => sum(data.entries.filter((e) => e.goal_id === goalId), 'amount');
 export const targetTotal = (data, targetId) => pathsOf(data, targetId).reduce((total, p) => total + earnedOn(data, p.id), 0);
 
+// Newest first, as lists of money are read.
+const newestFirst = (a, b) => String(b.logged_on).localeCompare(String(a.logged_on)) || String(b.created_at).localeCompare(String(a.created_at));
+export const entriesOf = (data, goalId) => data.entries.filter((e) => e.goal_id === goalId).sort(newestFirst);
+export const fundingOf = (data, milestoneId) => data.funding.filter((f) => f.milestone_id === milestoneId).sort(newestFirst);
+
 export const tasksOf = (data, milestoneId) => data.tasks.filter((t) => t.milestone_id === milestoneId).sort(byPosition);
 // What has been put toward a milestone that is locked until it is funded.
 export const fundedOn = (data, milestoneId) => sum(data.funding.filter((f) => f.milestone_id === milestoneId), 'amount');

@@ -13,7 +13,8 @@
   Runs the real app with a stand-in store (tests/fake-store.js): no sign-in, nothing saved.
   ?areas=empty   start with no areas (the default is Career, Health, Money, Mental)
   ?seed=1        put a KES 100,000 target with two paths in Money
-  ?seed=2        the same, plus milestones and tasks on Remote work, and three habits with some history
+  ?seed=2        the same, plus milestones and tasks on Remote work, a part-funded locked deposit on Trading,
+                 and three habits with some history
   ?fail=1        every load and save fails, like having no connection
   ?theme=dark    or light
 -->
@@ -35,7 +36,7 @@ if (seed >= 1) {
   const target = await store.add('goals', { area_id: money.id, parent_id: null, name: 'Make KES 100,000', target_amount: 100000, unit: 'KES', position: 0 });
   const remote = await store.add('goals', { area_id: money.id, parent_id: target.id, name: 'Remote work', target_amount: null, unit: 'KES', position: 0 });
   await store.add('goals', { area_id: money.id, parent_id: target.id, name: 'Trading', target_amount: null, unit: 'KES', position: 1 });
-  await store.add('entries', { goal_id: remote.id, amount: '12000.00', note: 'First gig' });
+  await store.add('entries', { goal_id: remote.id, amount: '12000.00', note: 'First gig', logged_on: '2026-10-03' });
 }
 if (seed >= 2) {
   const remote = store.rows('goals').find((g) => g.name === 'Remote work');
@@ -48,6 +49,16 @@ if (seed >= 2) {
   await store.add('tasks', { milestone_id: gigs.id, name: 'Shortlist 5 gigs', position: 0, done_at: '2026-10-10T09:00:00Z' });
   await store.add('tasks', { milestone_id: gigs.id, name: 'Write the proposals', position: 1, done_at: null });
   await store.add('tasks', { milestone_id: gigs.id, name: 'Send and log them', position: 2, done_at: null });
+  // Trading: a deposit that stays locked until it is funded, part of it from Remote work.
+  const trading = store.rows('goals').find((g) => g.name === 'Trading');
+  const step = (name, position, more = {}) => store.add('milestones', { goal_id: trading.id, name, position, done_at: null, due_date: null, fund_amount: null, ...more });
+  await step('Backtest 100 trades', 0);
+  await step('30 days of chart study', 1);
+  const deposit = await step('Deposit & go live', 2, { fund_amount: '20000.00' });
+  await step('First profitable month', 3);
+  await store.add('funding', { milestone_id: deposit.id, from_goal_id: remote.id, amount: '8000.00', note: null, logged_on: '2026-10-06' });
+  await store.add('funding', { milestone_id: deposit.id, from_goal_id: null, amount: '4000.00', note: 'gift', logged_on: '2026-10-09' });
+  await store.add('entries', { goal_id: remote.id, amount: '4000.00', note: 'Data entry job', logged_on: '2026-10-09' });
   // Habits with some history, counted back from today so the streaks always show.
   const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toLocaleDateString('en-CA'); };
   const area = (name) => store.rows('areas').find((x) => x.name === name).id;

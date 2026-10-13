@@ -32,9 +32,10 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [x] Habits (slice 4): a Habits node in each area, the Today strip under the map, check-ins and streaks, daily or a number of times a week with a "how often" choice. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-13
 
 ## Phase 4: Targets and paths
-- [ ] Number targets on goals; log amounts with a note
-- [ ] Paths: link goals to a target; "next step" per path
-- [ ] Funding targets on milestones, filled from linked paths or other cash; lock/unlock
+- [x] Number targets on goals (done with slice 2: a goal with an amount is a target, and its paths' totals add up to it)
+- [x] Paths: link goals to a target (done with slice 2); the next step per path is the "You are here" stop on its road (slice 3)
+- [x] Log amounts with a note (slice 5): "Log amount" on a path's road, a list of what was logged, and removing an entry. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-13
+- [x] Funding targets on milestones (slice 5): a milestone can need funding, stays locked until it is funded from any path or other cash, and unlocks. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-13
 
 ## Phase 5: Ship
 - [ ] PWA: manifest, icon, install to home screen

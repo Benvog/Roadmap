@@ -71,6 +71,11 @@ assert.equal(ids(afterArea.goals), 'run');
 assert.equal(afterArea.milestones.length + afterArea.tasks.length + afterArea.habits.length + afterArea.habit_checkins.length
   + afterArea.entries.length + afterArea.funding.length, 0);
 
+// Money lists read newest first.
+const logged = { entries: [{ id: 'old', goal_id: 'p', logged_on: '2026-10-01', created_at: '1' }, { id: 'new', goal_id: 'p', logged_on: '2026-10-09', created_at: '2' },
+  { id: 'same-day-later', goal_id: 'p', logged_on: '2026-10-09', created_at: '3' }, { id: 'other', goal_id: 'q', logged_on: '2026-10-10', created_at: '4' }] };
+assert.equal(ids(model.entriesOf(logged, 'p')), 'same-day-later,new,old');
+
 // ---------- Habits ----------
 // 2026-10-12 is a Monday.
 assert.equal(model.shiftDay('2026-10-01', -1), '2026-09-30', 'days step across a month end');

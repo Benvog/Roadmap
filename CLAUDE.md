@@ -8,17 +8,16 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - Phase 1 (design) is done: every screen and behaviour is decided and mocked in `mockups/prototype.html`.
 - Phase 2 (data and setup) is done except view-offline, which waits until a screen shows real data.
 - The real app so far is sign-in, the data layer, the map (You, areas, goals, targets and paths), a goal's
-  road with milestones and tasks, and habits (the Habits node, the Today strip, check-ins and streaks).
-  All of it saves to Supabase.
+  road with milestones and tasks, habits (the Habits node, the Today strip, check-ins and streaks), logging
+  amounts on a path, and funding a locked milestone. All of it saves to Supabase.
 - Phase 3 goes in slices: You and areas (done); goals, targets and paths (done); a goal's road with milestones
-  and tasks (done); habits (done); next logging and funding. Port behaviour
+  and tasks (done); habits (done); logging and funding (done). Port behaviour
   from the prototype, do not redesign it.
 - Each slice has gone the same way and should keep doing so: build it, extend `tests/drive.html`, run
   `bash tests/run.sh`, look at phone-width screenshots, then ask the user to try it signed in at
   http://localhost:8000 before committing.
-- Not yet in the real app (all are in the prototype): logging amounts
-  (the road shows a path's totals but has no "Log amount" button yet), funding a locked milestone (the locked
-  state is worked out and drawn, but nothing can set a funding amount yet), the List view.
+- Not yet in the real app: the List view, view-offline, and everything in Phase 5 (installing to the home
+  screen, the GitHub Pages deploy, the accessibility check).
 
 ## Stack
 - Static site: plain HTML, CSS and JavaScript (ES modules), no build step.
@@ -43,7 +42,7 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - `tests/`: `run.sh` runs `model.test.mjs` with Node, then `drive.html`, which drives the real app through
   `app.html` using `fake-store.js` (an in-memory stand-in for `store.js`). `tests/app.html` can also be opened by
   hand to see the app without signing in (`?seed=1` adds a target with paths, `?seed=2` also adds milestones,
-  tasks and habits with some history). `tests/shot.html` taps through a
+  tasks, a part-funded locked deposit and habits with some history). `tests/shot.html` taps through a
   list of things inside a 390px frame, for phone-width screenshots.
 - `js/store.js`: the only module that talks to Supabase. Sign-in functions, then `loadAll`, `add`, `update`,
   `remove`, `checkIn`, `undoCheckIn`. `loadAll` returns flat lists keyed by table name; nothing computes totals yet.
@@ -120,6 +119,11 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
   `refresh` in `app.js`). If the save fails, the form stays open with a message and nothing changes on screen.
 - Marking a milestone done ticks its tasks; marking it not done clears them; ticking the last task finishes the
   milestone and unticking one reopens it; adding a task to a finished milestone reopens it.
+- Money: an entry is logged on a path (`openLog`), dated today, and adds to that path's total and its target's.
+  A milestone with a `fund_amount` is locked until its funding rows add up to it (`fundingBox`, `openFund`);
+  funding names the path it came from or is "Other cash", and never reduces a path's earnings. Clearing a
+  milestone's funding amount leaves its funding rows in the database, hidden; they show again if an amount is set.
+- A "Remove" button on an entry or a funding row asks once: the first tap changes it to "Really remove?" (`armed`).
 - A form's `onSubmit` can throw `FormError('message')` (from `ui.js`) to show a specific message, such as a bad amount.
 - Map nodes are rebuilt on every draw and animated from where they were (`shown` in `map.js`). Node ids are the
   row ids; the small "+" and pencil nodes are the parent's id plus `-add` or `-edit`.

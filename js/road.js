@@ -6,8 +6,8 @@ const GAP = 118, TOP = 64;   // px between stops, and above the first one
 const STATE_LABEL = { done: 'Done', next: 'You are here', todo: 'Coming up', locked: 'Locked' };
 
 // Draws into `root`. `getData()` returns the app's data; the callbacks report taps:
-// `onBack()`, `onEdit(goal)`, `onMilestone(milestone)`, `onAddMilestone(goal)`.
-export function createRoad(root, { getData, onBack, onEdit, onMilestone, onAddMilestone }) {
+// `onBack()`, `onEdit(goal)`, `onMilestone(milestone)`, `onAddMilestone(goal)`, and `onLog(path)` for "Log amount".
+export function createRoad(root, { getData, onBack, onEdit, onMilestone, onAddMilestone, onLog }) {
   root.innerHTML = `<div class="page">
       <div class="page-head">
         <button class="icon-btn" type="button" id="road-back" aria-label="Back to the map">${ICONS.back}</button>
@@ -40,7 +40,8 @@ export function createRoad(root, { getData, onBack, onEdit, onMilestone, onAddMi
       <span class="bar"><i style="width:${percent}%"></i></span>`;
     if (parent) {
       card += `<div class="toward"><span>Counts toward ${esc(parent.name)}
-        <b>${esc(amount(model.targetTotal(data, parent.id), unit))} of ${esc(amount(parent.target_amount, unit, true))}</b></span></div>`;
+        <b>${esc(amount(model.targetTotal(data, parent.id), unit))} of ${esc(amount(parent.target_amount, unit, true))}</b></span>
+        <button class="btn primary" type="button" id="log-open">Log amount</button></div>`;
     }
     $('road-progress').innerHTML = card;
 
@@ -78,6 +79,7 @@ export function createRoad(root, { getData, onBack, onEdit, onMilestone, onAddMi
   }
 
   $('road-back').addEventListener('click', () => onBack());
+  $('road-progress').addEventListener('click', (e) => { if (e.target.closest('#log-open')) onLog(goal); });
   $('road-edit').addEventListener('click', () => onEdit(goal));
   $('road-chips').addEventListener('click', (e) => {
     const id = e.target.closest('[data-goal]')?.dataset.goal;
