@@ -63,3 +63,4 @@ Me, mostly on my phone: checking in on goals and habits through the day.
 - 2026-10-12: The icon is a node with three branches, like You and the areas on the map.
 - 2026-10-13: Sign-in is by email and password, not an emailed link. The link failed on the phone (the email app opened it in a different browser) and the free email service allows only a few emails an hour.
 - 2026-10-12: Data model approved (`docs/DATA-MODEL.md`). Habits can be daily or a number of times a week. Offline: view only; changes need a connection.
+- 2026-10-13: Live at https://benvog.github.io/Roadmap/ and installable to the home screen. The app's own files are kept on the device so it opens offline; the map's data is not yet.

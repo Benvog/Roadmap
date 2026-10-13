@@ -1,0 +1,14 @@
+<!doctype html><body style="margin:0"><iframe id="f" src="/index.html" style="width:390px;height:844px;border:0"></iframe>
+<script>
+// Loads the real app page (the one that talks to Supabase) and reports whether the sign-in screen drew, and how fast.
+// Run by tests/load.sh. Nobody is signed in in the test browser, so the sign-in screen is the expected result.
+if (!['localhost', '127.0.0.1'].includes(location.hostname)) throw new Error('This test page only runs on localhost.');
+const run = new URLSearchParams(location.search).get('run'), t0 = performance.now();
+const tick = setInterval(() => {
+  const d = document.getElementById('f').contentDocument, h1 = d && d.querySelector('.card h1');
+  const ms = Math.round(performance.now() - t0);
+  if (!h1 && ms < 9000) return;
+  clearInterval(tick);
+  fetch('/__result?run=' + run + '&drew=' + encodeURIComponent(h1 ? h1.textContent : 'NOTHING') + '&ms=' + ms);
+}, 100);
+</script></body>
