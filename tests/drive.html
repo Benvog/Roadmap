@@ -23,8 +23,11 @@ async function open(query) {
   const tapNode = (sel, text, suffix = '') => { const el = find(sel, text); if (!el) throw new Error('no ' + sel + ' with ' + text); tap(node(el.dataset.id + suffix)); };
   const goals = () => [...d.querySelectorAll('.goal:not(.leaving)')].map((g) => g.querySelector('b').textContent + ' [' + g.querySelector('small').textContent.trim() + ']').join(' ; ');
   const fill = (id, value) => { q('#' + id).value = value; };
+  const stops = () => [...d.querySelectorAll('.stop:not(.add-stop)')].map((s) => s.querySelector('b').textContent + ' [' + s.className.replace('stop', '').trim() + ': ' + s.querySelector('small').textContent + ']').join(' ; ');
+  const tasks = () => [...d.querySelectorAll('.tasks input')].map((c) => (c.checked ? '[x] ' : '[ ] ') + c.closest('label').textContent.trim()).join(' ; ');
+  const progress = () => q('#road-progress').textContent.replace(/\s+/g, ' ').trim();
   const submit = async (ms = 900) => { tap('#sheet-form [type=submit]'); await wait(ms); };
-  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, store: w.fakeStore };
+  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, stops, tasks, progress, store: w.fakeStore };
 }
 async function scenario(name, query, steps) {
   const log = [];
@@ -93,11 +96,13 @@ async function scenario(name, query, steps) {
     t.tapNode('.goal', 'Make KES 100,000', '-edit'); say('target form', t.q('#f-name').value + ' / ' + t.q('#f-target').value);
     t.fill('f-target', ''); t.tap('#sheet-form [type=submit]'); await wait(200); say('empty amount', t.q('#sheet-error').textContent);
     t.fill('f-target', '150000'); await t.submit(); say('target edited', t.find('.goal', 'Make KES').querySelector('small').textContent.trim());
-    t.tapNode('.goal', 'Trading'); say('path tap', t.sheet().querySelector('h2').textContent + ' (' + t.sheet().querySelector('.kicker').textContent + ')');
-    t.fill('f-name', 'Trading forex'); t.fill('f-due', '2027-06-30'); await t.submit();
-    say('path edited', t.goals() + ' | due saved: ' + t.store.rows('goals').find((g) => g.name === 'Trading forex').due_date);
-    t.tapNode('.goal', 'Trading forex'); say('due shows again', t.q('#f-due').value); t.tap('[data-act="ask-delete"]'); say('delete path asks', t.q('#sheet-danger p').textContent);
-    t.tap('[data-act="delete"]'); await wait(900); say('path deleted', t.goals());
+    t.tapNode('.goal', 'Trading'); await wait(300);
+    say('path tap opens its road', !t.q('#road-screen').hidden + ' | map hidden: ' + t.q('#map-screen').hidden + ' | ' + t.q('#road-kicker').textContent + ' / ' + t.q('#road-title').textContent);
+    t.tap('#road-edit'); say('road pencil', t.sheet().querySelector('h2').textContent + ' (' + t.sheet().querySelector('.kicker').textContent + ')');
+    t.fill('f-name', 'Trading forex'); t.fill('f-due', '2027-06-30'); await t.submit(500);
+    say('path edited', t.q('#road-title').textContent + ' | ' + t.q('#road-kicker').textContent + ' | due saved: ' + t.store.rows('goals').find((g) => g.name === 'Trading forex').due_date);
+    t.tap('#road-edit'); say('due shows again', t.q('#f-due').value); t.tap('[data-act="ask-delete"]'); say('delete path asks', t.q('#sheet-danger p').textContent);
+    t.tap('[data-act="delete"]'); await wait(1300); say('path deleted', 'back on map: ' + !t.q('#map-screen').hidden + ' | ' + t.goals());
     t.tapNode('.goal', 'Make KES 100,000'); await wait(900); say('target folded', t.goals());
     t.tapNode('.goal', 'Make KES 100,000'); await wait(900);
     t.tapNode('.goal', 'Make KES 100,000', '-edit'); t.tap('[data-act="ask-delete"]'); say('delete target asks', t.q('#sheet-danger p').textContent);
@@ -105,6 +110,49 @@ async function scenario(name, query, steps) {
     say('target deleted', t.goals() + ' | goal rows left: ' + t.store.rows('goals').map((g) => g.name).join(','));
     t.tapNode('.area', 'Money', '-edit'); t.tap('[data-act="ask-delete"]'); t.tap('[data-act="delete"]'); await wait(1200);
     say('area deleted', t.areas() + ' | goal rows left: ' + t.store.rows('goals').length);
+    say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
+  });
+  await scenario('road', '?theme=light&seed=1', async (t, say) => {
+    t.tap(t.node('you')); await wait(1300); t.tapNode('.area', 'Money'); await wait(1000); t.tapNode('.goal', 'Make KES'); await wait(1100);
+    t.tapNode('.goal', 'Remote work'); await wait(300);
+    say('road', t.q('#road-kicker').textContent + ' / ' + t.q('#road-title').textContent + ' | ' + t.progress());
+    say('chips', [...t.d.querySelectorAll('#road-chips button')].map((b) => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')).join(', '));
+    say('empty road', 'stops: ' + t.d.querySelectorAll('.stop:not(.add-stop)').length + ' | add stop: ' + !!t.q('.add-stop') + ' | finish: ' + t.q('.finish small').textContent);
+    for (const [name, due] of [['Pick a niche', ''], ['Apply to 5 gigs a week', '2027-03-01'], ['Land first client', '']]) {
+      t.tap('.add-stop'); t.fill('f-name', name); t.fill('f-due', due); await t.submit(500);
+    }
+    say('three stops', t.stops() + ' | ' + t.progress());
+    t.tap('.stop:not(.add-stop)'); say('milestone sheet', t.sheet().querySelector('.kicker').textContent + ' / ' + t.sheet().querySelector('h2').textContent + ' / ' + t.q('.pill').textContent + ' / ' + t.sheet().querySelector('.muted').textContent);
+    t.tap('[data-act="done"]'); await wait(500);
+    say('marked done', t.q('.pill').textContent + ' | ' + t.stops() + ' | ' + t.progress());
+    t.tap('[data-act="close"]'); t.d.querySelectorAll('.stop')[1].click();
+    say('second sheet', t.sheet().querySelector('h2').textContent + ' / ' + t.q('.pill').textContent + ' / ' + [...t.sheet().querySelectorAll('p.muted')].map((p) => p.textContent).join(' / '));
+    for (const name of ['Shortlist 5 gigs', 'Write the <i>proposals</i>']) { t.tap('[data-act="add-task"]'); t.fill('f-name', name); await t.submit(500); }
+    say('tasks added', t.tasks() + ' | tags stayed text: ' + !t.q('.tasks i'));
+    t.d.querySelectorAll('.tasks input')[0].click(); await wait(500);
+    say('one ticked', t.tasks() + ' | ' + t.q('.pill').textContent);
+    t.d.querySelectorAll('.tasks input')[1].click(); await wait(500);
+    say('all ticked finishes it', t.tasks() + ' | ' + t.q('.pill').textContent + ' | ' + t.progress());
+    t.d.querySelectorAll('.tasks input')[1].click(); await wait(500);
+    say('unticking reopens it', t.tasks() + ' | ' + t.q('.pill').textContent + ' | ' + t.progress());
+    t.store.failing = true; t.d.querySelectorAll('.tasks input')[1].click(); await wait(500);
+    say('tick with no connection', t.q('#sheet-error').textContent + ' | ' + t.tasks());
+    t.store.failing = false;
+    t.tap('[data-act="edit"]'); say('edit fields', [...t.d.querySelectorAll('#sheet-form input')].map((i) => i.value).join(' | '));
+    t.fill('f-name', 'Apply to 10 gigs a week'); t.fill('f-task0', ''); t.fill('f-due', ''); await t.submit(600);
+    say('milestone edited', t.sheet().querySelector('h2').textContent + ' | ' + t.tasks() + ' | due line gone: ' + !/Due/.test(t.sheet().textContent));
+    t.tap('[data-act="done"]'); await wait(500); say('done ticks its tasks', t.tasks() + ' | ' + t.progress());
+    t.tap('[data-act="undo"]'); await wait(500); say('not done clears them', t.tasks() + ' | ' + t.progress());
+    t.tap('[data-act="close"]'); t.d.querySelectorAll('.stop')[2].click(); t.tap('[data-act="edit"]'); t.tap('[data-act="ask-delete"]');
+    say('delete asks', t.q('#sheet-danger p').textContent); t.tap('[data-act="delete"]'); await wait(500);
+    say('milestone deleted', t.stops() + ' | sheet closed: ' + !t.sheet() + ' | task rows: ' + t.store.rows('tasks').length);
+    t.d.querySelectorAll('#road-chips button')[1].click(); await wait(200); say('chip switches road', t.q('#road-title').textContent + ' | ' + t.progress());
+    t.d.querySelectorAll('#road-chips button')[0].click(); await wait(200);
+    t.tap('#road-back'); await wait(900);
+    say('back on map', !t.q('#map-screen').hidden + ' | ' + t.goals() + ' | Money: ' + t.find('.area', 'Money').querySelector('small').textContent + ' | zoom ' + t.zoom());
+    t.tapNode('.goal', 'Remote work'); await wait(300); t.d.querySelectorAll('.stop')[1].click(); t.tap('[data-act="done"]'); await wait(500);
+    say('all done', t.progress() + ' | finish reached: ' + t.q('.finish').classList.contains('reached'));
+    say('page overflow on road', t.d.documentElement.scrollWidth > 390);
     say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
   });
   await scenario('empty', '?areas=empty', async (t, say) => {

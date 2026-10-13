@@ -28,6 +28,22 @@ export const areaProgress = (data, areaId) => progress(goalsIn(data, areaId).fla
 export const earnedOn = (data, goalId) => sum(data.entries.filter((e) => e.goal_id === goalId), 'amount');
 export const targetTotal = (data, targetId) => pathsOf(data, targetId).reduce((total, p) => total + earnedOn(data, p.id), 0);
 
+export const tasksOf = (data, milestoneId) => data.tasks.filter((t) => t.milestone_id === milestoneId).sort(byPosition);
+// What has been put toward a milestone that is locked until it is funded.
+export const fundedOn = (data, milestoneId) => sum(data.funding.filter((f) => f.milestone_id === milestoneId), 'amount');
+
+// Where a milestone stands: 'done', 'locked' (it needs funding it does not have yet),
+// 'next' (the first one on its road that is not done), or 'todo'.
+export function milestoneState(data, milestone) {
+  if (milestone.done_at) return 'done';
+  if (milestone.fund_amount != null && fundedOn(data, milestone.id) < Number(milestone.fund_amount)) return 'locked';
+  const first = milestonesOf(data, milestone.goal_id).find((m) => !m.done_at);
+  return first && first.id === milestone.id ? 'next' : 'todo';
+}
+
+// Every goal that has a road of its own (plain goals and paths, not targets), in the order they sit on the map.
+export const roads = (data) => data.areas.flatMap((a) => goalsIn(data, a.id).flatMap((g) => (kindOf(g) === 'target' ? pathsOf(data, g.id) : [g])));
+
 // The next free place at the end of a list of siblings.
 export const nextPosition = (rows) => rows.reduce((max, r) => Math.max(max, r.position), -1) + 1;
 

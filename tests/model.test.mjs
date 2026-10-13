@@ -39,6 +39,20 @@ assert.equal(model.targetTotal(data, '100k'), 12500.5);
 assert.equal(model.nextPosition(model.pathsOf(data, '100k')), 2);
 assert.equal(model.nextPosition([]), 0);
 
+assert.equal(ids(model.tasksOf(data, 'm1')), 't1');
+assert.equal(model.milestoneState(data, data.milestones[0]), 'done');
+assert.equal(model.milestoneState(data, data.milestones[1]), 'next', 'the first milestone not done is the next step');
+assert.equal(ids(model.roads(data)), 'remote,trading,emergency,run', 'roads are plain goals and paths, in map order, without targets');
+// A milestone that needs funding is locked until the funding adds up, wherever it came from.
+const funded = structuredClone(data);
+funded.milestones.push({ id: 'm5', goal_id: 'trading', position: 1, done_at: null, fund_amount: '20000.00' });
+funded.funding = [{ id: 'f1', milestone_id: 'm5', from_goal_id: 'remote', amount: '8000.00' }, { id: 'f2', milestone_id: 'm5', from_goal_id: null, amount: '4000.00' }];
+const deposit = funded.milestones.at(-1);
+assert.equal(model.fundedOn(funded, 'm5'), 12000);
+assert.equal(model.milestoneState(funded, deposit), 'locked');
+funded.funding.push({ id: 'f3', milestone_id: 'm5', from_goal_id: null, amount: '8000.00' });
+assert.equal(model.milestoneState(funded, deposit), 'todo', 'once funded it is an ordinary milestone waiting its turn');
+
 // Deleting a path takes its milestones, tasks and entries, and clears the link on funding that came from it.
 const afterPath = structuredClone(data);
 model.removeLocal(afterPath, 'goals', 'remote');

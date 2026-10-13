@@ -4,20 +4,20 @@ A personal life-areas roadmap: areas → goals → milestones → tasks, habits 
 (e.g. KES 100,000 in 12 months) fed by linked paths and funding from any source.
 Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build is.
 
-## Where things stand (2026-10-12)
+## Where things stand (2026-10-13)
 - Phase 1 (design) is done: every screen and behaviour is decided and mocked in `mockups/prototype.html`.
 - Phase 2 (data and setup) is done except view-offline, which waits until a screen shows real data.
-- The real app so far is sign-in, the data layer, and two slices of the map: You and your areas, then goals,
-  targets and paths inside an area. All of it saves to Supabase.
-- Phase 3 goes in slices: You and areas (done); goals, targets and paths (done); next, a goal's road with
-  milestones and tasks; then habits; then logging and funding. Port behaviour from the prototype, do not redesign it.
+- The real app so far is sign-in, the data layer, the map (You, areas, goals, targets and paths) and a goal's
+  road with milestones and tasks. All of it saves to Supabase.
+- Phase 3 goes in slices: You and areas (done); goals, targets and paths (done); a goal's road with milestones
+  and tasks (done); next habits; then logging and funding. Port behaviour
+  from the prototype, do not redesign it.
 - Each slice has gone the same way and should keep doing so: build it, extend `tests/drive.html`, run
   `bash tests/run.sh`, look at phone-width screenshots, then ask the user to try it signed in at
   http://localhost:8000 before committing.
-- Not yet in the real app (all are in the prototype): the Habits node and the Today strip, milestones and tasks,
-  logging amounts, funding and locked milestones, due dates shown on screen, the List view.
-- Until the road is built, tapping a goal or a path opens its edit form (`onOpen` in `js/app.js`). The road takes
-  over that tap, and the edit moves to a pencil in the road's header as in the prototype.
+- Not yet in the real app (all are in the prototype): the Habits node and the Today strip, logging amounts
+  (the road shows a path's totals but has no "Log amount" button yet), funding a locked milestone (the locked
+  state is worked out and drawn, but nothing can set a funding amount yet), the List view.
 
 ## Stack
 - Static site: plain HTML, CSS and JavaScript (ES modules), no build step.
@@ -34,12 +34,15 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - `js/app.js`: the signed-in app. `startApp(root, user, store)` loads the data, runs the map and handles adding and
   editing. The store is passed in, so tests can run the real app with a stand-in.
 - `js/map.js`: the map itself (layout, the opening motion, the camera, pan and zoom). It only draws and reports taps.
+- `js/road.js`: a goal's road (header, goal chips, progress card, the winding road of stops). It only draws and
+  reports taps too; the milestone sheet and its saving live in `app.js`.
 - `js/model.js`: works things out from the flat lists (an area's goals, a target's paths, progress, totals) and
   `removeLocal`, which mirrors the database's cascade when a row is deleted. Checked by `tests/model.test.mjs`.
 - `js/ui.js`: `esc`, icons, and the bottom sheet with its forms (`openForm`).
 - `tests/`: `run.sh` runs `model.test.mjs` with Node, then `drive.html`, which drives the real app through
   `app.html` using `fake-store.js` (an in-memory stand-in for `store.js`). `tests/app.html` can also be opened by
-  hand to see the app without signing in (`?seed=1` adds a target with paths). `tests/shot.html` taps through a
+  hand to see the app without signing in (`?seed=1` adds a target with paths, `?seed=2` also adds milestones and
+  tasks). `tests/shot.html` taps through a
   list of things inside a 390px frame, for phone-width screenshots.
 - `js/store.js`: the only module that talks to Supabase. Sign-in functions, then `loadAll`, `add`, `update`,
   `remove`, `checkIn`, `undoCheckIn`. `loadAll` returns flat lists keyed by table name; nothing computes totals yet.
@@ -106,10 +109,13 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 
 ## How the app is put together
 - `main.js` decides between the sign-in screens and the app. `app.js` owns the data in memory (`data`, the flat
-  lists from `store.loadAll()`), every add, edit and delete, and the forms. `map.js` only draws `data` and calls
-  back (`onAdd`, `onEdit`, `onOpen`).
-- A change is saved first, then applied to `data`, then the map is redrawn (`create`, `destroy` and `refresh` in
-  `app.js`). If the save fails, the form stays open with a message and nothing changes on screen.
+  lists from `store.loadAll()`), every add, edit and delete, and the forms. `map.js` and `road.js` only draw
+  `data` and call back. `showScreen` in `app.js` switches between the map (fixed, pans itself) and a road
+  (an ordinary scrolling page); the map keeps its state while a road is showing.
+- A change is saved first, then applied to `data`, then the screen is redrawn (`create`, `change`, `destroy` and
+  `refresh` in `app.js`). If the save fails, the form stays open with a message and nothing changes on screen.
+- Marking a milestone done ticks its tasks; marking it not done clears them; ticking the last task finishes the
+  milestone and unticking one reopens it; adding a task to a finished milestone reopens it.
 - A form's `onSubmit` can throw `FormError('message')` (from `ui.js`) to show a specific message, such as a bad amount.
 - Map nodes are rebuilt on every draw and animated from where they were (`shown` in `map.js`). Node ids are the
   row ids; the small "+" and pencil nodes are the parent's id plus `-add` or `-edit`.

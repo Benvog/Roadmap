@@ -27,7 +27,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 ## Phase 3: Core app
 - [x] Branching map home, slice 1: You and areas on real data (pan, zoom, the opening motion and zoom camera; add, rename, move and delete areas; a starter set for an empty map). Passing `tests/run.sh` and tried signed in on the PC on 2026-10-12
 - [x] Branching map home, slice 2: goals, targets and paths inside an area, and progress per area. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-12. Until the road exists, tapping a goal or path opens its edit form (name, due date, delete)
-- [ ] Journey road per goal: milestones as stops, tasks in the milestone sheet, roll-up progress and due dates
+- [x] Journey road per goal (slice 3): milestones as stops, tasks in the milestone sheet, roll-up progress and due dates. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-13
 - [ ] List view of areas
 - [ ] Habits with check-ins and streak counts, daily or a number of times a week (with a "how often" choice in the add and edit forms)
 

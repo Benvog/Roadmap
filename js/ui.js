@@ -10,12 +10,20 @@ export function amount(n, unit = 'KES', bare = false) {
   return bare ? figure : 'KES ' + figure;
 }
 
+// "1 Mar 2027" from the database's "2027-03-01".
+export const niceDate = (iso) => new Date(iso + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
 const svg = (body, extra = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"') =>
   `<svg viewBox="0 0 24 24" ${extra} aria-hidden="true">${body}</svg>`;
 export const ICONS = {
   pencil: svg('<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>'),
   moon: svg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
   person: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.500 8 6.5"/>'),
+  back: svg('<path d="M15 5l-7 7 7 7"/>'),
+  check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  lock: svg('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+  flag: svg('<path d="M6 21V4M6 4h11l-2 4 2 4H6"/>'),
+  dot: svg('<circle cx="12" cy="12" r="5"/>', 'fill="currentColor"'),
 };
 
 // ---------- Bottom sheet ----------
@@ -31,6 +39,7 @@ export function showSheet(html) {
   }
   sheet.innerHTML = html;
   sheet.onclick = null;
+  sheet.onchange = null;
   sheet.hidden = false;
   return sheet;
 }
@@ -40,13 +49,14 @@ export function closeSheet() {
   sheet.hidden = true;
   sheet.innerHTML = '';
   sheet.onclick = null;
+  sheet.onchange = null;
 }
 export const sheetHead = (kicker, title) => `<div class="sheet-head">
     <div><p class="kicker">${esc(kicker)}</p><h2 id="sheet-title">${esc(title)}</h2></div>
     <button class="icon-btn" type="button" data-act="close" aria-label="Close">✕</button>
   </div>`;
 
-const SAVE_FAILED = 'That could not be saved. Check your connection and try again.';
+export const SAVE_FAILED = 'That could not be saved. Check your connection and try again.';
 
 // Throw this from a form's onSubmit to show the person a specific message instead of the general one.
 export class FormError extends Error {}

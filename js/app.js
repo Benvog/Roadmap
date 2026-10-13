@@ -1,14 +1,16 @@
-// The signed-in app: loads the user's data and runs the map.
+// The signed-in app: loads the user's data and runs the map and the goal roads.
 // `store` is passed in (js/store.js in the real app) so tests can supply a stand-in with the same functions.
 import { createMap } from './map.js';
+import { createRoad } from './road.js';
 import * as model from './model.js';
-import { ICONS, FormError, openForm, showSheet, sheetHead, closeSheet } from './ui.js';
+import { esc, ICONS, FormError, SAVE_FAILED, niceDate, openForm, showSheet, sheetHead, closeSheet } from './ui.js';
 
 const STARTERS = ['Career', 'Health', 'Money', 'Mental'];   // clockwise from the top, so Money sits at the bottom
+const STATE_LABEL = { done: 'Done', next: 'Next step', todo: 'Coming up', locked: 'Locked' };
 
 // Starts the app inside `root` and returns a function that stops it (used on sign-out).
 export function startApp(root, user, store) {
-  let stopped = false, map = null, data = null;
+  let stopped = false, map = null, road = null, data = null, screen = 'map';
 
   async function load() {
     root.innerHTML = '<div class="gate"><div class="card"><p class="muted" role="status">Loading your map…</p></div></div>';
@@ -28,20 +30,29 @@ export function startApp(root, user, store) {
   }
 
   function draw() {
-    root.innerHTML = `<div id="map"></div>
-      <header class="topbar">
-        <h1>Vektor</h1>
-        <button class="icon-btn" type="button" id="theme" aria-label="Switch between light and dark theme">${ICONS.moon}</button>
-        <button class="icon-btn" type="button" id="account" aria-label="Your account">${ICONS.person}</button>
-      </header>
-      <div class="notice" id="starter" hidden>
-        <p><b>Your map is empty.</b> Start with the usual four areas, or tap You and add your own with +.</p>
-        <button class="btn primary" type="button" id="add-starters">Add ${STARTERS.slice(0, -1).join(', ')} and ${STARTERS.at(-1)}</button>
-        <p class="error" id="starter-error" role="alert" hidden>Those could not all be added. Check your connection and try again.</p>
-      </div>`;
-    document.body.classList.add('lock');
-    map = createMap(root.querySelector('#map'), { onAdd, onEdit, onOpen });
-    refresh();
+    root.innerHTML = `<div id="map-screen">
+        <div id="map"></div>
+        <header class="topbar">
+          <h1>Vektor</h1>
+          <button class="icon-btn" type="button" id="theme" aria-label="Switch between light and dark theme">${ICONS.moon}</button>
+          <button class="icon-btn" type="button" id="account" aria-label="Your account">${ICONS.person}</button>
+        </header>
+        <div class="notice" id="starter" hidden>
+          <p><b>Your map is empty.</b> Start with the usual four areas, or tap You and add your own with +.</p>
+          <button class="btn primary" type="button" id="add-starters">Add ${STARTERS.slice(0, -1).join(', ')} and ${STARTERS.at(-1)}</button>
+          <p class="error" id="starter-error" role="alert" hidden>Those could not all be added. Check your connection and try again.</p>
+        </div>
+      </div>
+      <div id="road-screen" hidden></div>`;
+    map = createMap(root.querySelector('#map'), { onAdd, onEdit, onOpen: openRoad });
+    road = createRoad(root.querySelector('#road-screen'), {
+      getData: () => data,
+      onBack: () => showScreen('map'),
+      onEdit: editGoal,
+      onMilestone: openMilestone,
+      onAddMilestone: (goal) => onAdd('milestone', goal),
+    });
+    showScreen('map');
     map.centre();
 
     root.querySelector('#theme').addEventListener('click', toggleTheme);
@@ -49,11 +60,25 @@ export function startApp(root, user, store) {
     root.querySelector('#add-starters').addEventListener('click', addStarters);
   }
 
-  // Redraws the map from the data in memory.
+  // The map fills the screen and does its own panning; a road is an ordinary page that scrolls.
+  function showScreen(name) {
+    screen = name;
+    closeSheet();
+    root.querySelector('#map-screen').hidden = name !== 'map';
+    root.querySelector('#road-screen').hidden = name !== 'road';
+    document.body.classList.toggle('lock', name === 'map');
+    refresh();
+  }
+  function openRoad(goal) {
+    showScreen('road');
+    road.show(goal);
+  }
+
+  // Redraws whichever screen is showing from the data in memory.
   function refresh() {
     root.querySelector('#starter').hidden = data.areas.length > 0;
     map.setData(data);
-    map.render();
+    if (screen === 'map') map.render(); else road.render();
   }
 
   // Saves a new row and adds it to the data in memory.
@@ -62,11 +87,16 @@ export function startApp(root, user, store) {
     data[table].push(row);
     return row;
   }
+  // Saves changes to a row and applies them to the copy in memory.
+  async function change(table, row, changes) {
+    Object.assign(row, await store.update(table, row.id, changes));
+  }
   // Deletes a row; the database removes what hangs under it, and removeLocal does the same in memory.
   async function destroy(table, row) {
     await store.remove(table, row.id);
     model.removeLocal(data, table, row.id);
   }
+  const setDone = (table, row, done) => change(table, row, { done_at: done ? new Date().toISOString() : null });
   const name = (placeholder, value) => ({ id: 'name', label: 'Name', placeholder, value });
   const dueField = (value) => ({ id: 'due', label: 'Due date (optional)', type: 'date', value });
   // A whole amount above zero, or null when the field was left empty. Anything else is a mistake to point out.
@@ -93,7 +123,8 @@ export function startApp(root, user, store) {
   }
 
   // ---------- Adding ----------
-  // `parent` is the row the "+" hangs from: an area for a goal, a target for a path.
+  // `parent` is the row the "+" hangs from: an area for a goal, a target for a path, a goal for a milestone,
+  // a milestone for a task.
   function onAdd(kind, parent) {
     if (kind === 'area') {
       openForm({ kicker: 'Your map', title: 'Add an area', submit: 'Add area', fields: [name('Learning, Faith, Family')],
@@ -123,6 +154,24 @@ export function startApp(root, user, store) {
           refresh();
         } });
     }
+    if (kind === 'milestone') {
+      openForm({ kicker: parent.name, title: 'Add a milestone', submit: 'Add milestone', fields: [name('The next big step'), dueField()],
+        onSubmit: async (v) => {
+          await create('milestones', { goal_id: parent.id, name: v.name, due_date: v.due || null, position: model.nextPosition(model.milestonesOf(data, parent.id)) });
+          closeSheet();
+          refresh();
+        } });
+    }
+    if (kind === 'task') {
+      openForm({ kicker: parent.name, title: 'Add a task', submit: 'Add task', fields: [name('One small thing to do')],
+        onSubmit: async (v) => {
+          await create('tasks', { milestone_id: parent.id, name: v.name, position: model.nextPosition(model.tasksOf(data, parent.id)) });
+          // A finished milestone with a new, unticked task is no longer finished.
+          if (parent.done_at) await setDone('milestones', parent, false);
+          refresh();
+          openMilestone(parent);
+        } });
+    }
   }
 
   // ---------- Editing ----------
@@ -134,14 +183,14 @@ export function startApp(root, user, store) {
         [data.areas[at], data.areas[to]] = [data.areas[to], data.areas[at]];
         refresh();
         for (const [i, a] of data.areas.entries()) {
-          if (a.position !== i) { await store.update('areas', a.id, { position: i }); a.position = i; }
+          if (a.position !== i) await change('areas', a, { position: i });
         }
         onEdit('area', row);
       };
       openForm({ kicker: 'Area', title: 'Edit ' + row.name, submit: 'Save', fields: [name('', row.name)],
         extras: data.areas.length > 1 ? [{ label: 'Move clockwise', run: move(1) }, { label: 'Move anticlockwise', run: move(-1) }] : [],
         onSubmit: async (v) => {
-          Object.assign(row, await store.update('areas', row.id, { name: v.name }));
+          await change('areas', row, { name: v.name });
           closeSheet();
           refresh();
         },
@@ -159,7 +208,7 @@ export function startApp(root, user, store) {
         onSubmit: async (v) => {
           const target = wholeAmount(v.target);
           if (!target) throw new FormError('A target needs an amount above zero.');
-          Object.assign(row, await store.update('goals', row.id, { name: v.name, target_amount: target }));
+          await change('goals', row, { name: v.name, target_amount: target });
           closeSheet();
           refresh();
         },
@@ -168,17 +217,87 @@ export function startApp(root, user, store) {
     }
   }
 
-  // Tapping a goal or a path. Until its road is built, this opens its details; the road will take over this tap.
-  function onOpen(goal) {
+  // The pencil in a road's header: the goal or path that road belongs to.
+  function editGoal(goal) {
     const path = model.kindOf(goal) === 'path';
     openForm({ kicker: path ? 'Path' : 'Goal', title: 'Edit ' + goal.name, submit: 'Save', fields: [name('', goal.name), dueField(goal.due_date)],
       onSubmit: async (v) => {
-        Object.assign(goal, await store.update('goals', goal.id, { name: v.name, due_date: v.due || null }));
+        await change('goals', goal, { name: v.name, due_date: v.due || null });
         closeSheet();
         refresh();
       },
       remove: { label: path ? 'Delete this path' : 'Delete this goal', confirm: `Delete ${goal.name} and its milestones?`,
-        run: async () => { await destroy('goals', goal); closeSheet(); refresh(); } } });
+        run: async () => { await destroy('goals', goal); showScreen('map'); } } });
+  }
+
+  // ---------- A milestone's sheet: its tasks, and marking it done ----------
+  function openMilestone(m, problem = '') {
+    const goal = data.goals.find((g) => g.id === m.goal_id);
+    const stops = model.milestonesOf(data, goal.id), tasks = model.tasksOf(data, m.id);
+    const state = model.milestoneState(data, m);
+    const main = state === 'done' ? '<button class="btn" type="button" data-act="undo">Mark as not done</button>'
+      : state === 'locked' ? '<button class="btn" type="button" disabled>Locked until funded</button>'
+      : '<button class="btn primary" type="button" data-act="done">Mark milestone done</button>';
+    const el = showSheet(`${sheetHead(`${goal.name} · milestone ${stops.indexOf(m) + 1} of ${stops.length}`, m.name)}
+      <span class="pill ${state}">${STATE_LABEL[state]}</span>
+      ${m.due_date ? `<p class="muted">Due ${esc(niceDate(m.due_date))}</p>` : ''}
+      ${tasks.length ? `<ul class="tasks">${tasks.map((t) => `<li><label>
+          <input type="checkbox" id="task-${t.id}" data-task="${t.id}" ${t.done_at ? 'checked' : ''}><span>${esc(t.name)}</span></label></li>`).join('')}</ul>`
+        : '<p class="muted">No tasks added to this milestone yet.</p>'}
+      <p class="error" id="sheet-error" role="alert" ${problem ? '' : 'hidden'}>${esc(problem)}</p>
+      <div class="actions">${main}
+        <button class="btn" type="button" data-act="add-task">+ Add a task</button>
+        <button class="btn" type="button" data-act="edit">Edit</button></div>`);
+
+    // Saves, then redraws the road and this sheet from what was actually saved.
+    const attempt = async (work) => {
+      el.querySelectorAll('button, input').forEach((c) => (c.disabled = true));
+      let failed = '';
+      try { await work(); } catch (err) { failed = SAVE_FAILED; }
+      refresh();
+      openMilestone(m, failed);
+    };
+    el.onclick = (e) => {
+      const act = e.target.closest('[data-act]')?.dataset.act;
+      if (act === 'close') closeSheet();
+      if (act === 'add-task') onAdd('task', m);
+      if (act === 'edit') editMilestone(m);
+      // Marking a milestone done ticks its tasks too; marking it not done clears them.
+      if (act === 'done' || act === 'undo') {
+        attempt(async () => {
+          await setDone('milestones', m, act === 'done');
+          for (const t of tasks) if (!!t.done_at !== (act === 'done')) await setDone('tasks', t, act === 'done');
+        });
+      }
+    };
+    el.onchange = (e) => {
+      const task = tasks.find((t) => t.id === e.target.dataset.task);
+      if (!task) return;
+      attempt(async () => {
+        await setDone('tasks', task, e.target.checked);
+        // Ticking the last task finishes the milestone (unless it is locked); unticking one reopens it.
+        const all = tasks.every((t) => t.done_at);
+        if (all !== !!m.done_at && !(all && state === 'locked')) await setDone('milestones', m, all);
+      });
+    };
+  }
+
+  function editMilestone(m) {
+    const goal = data.goals.find((g) => g.id === m.goal_id), tasks = model.tasksOf(data, m.id);
+    openForm({ kicker: goal.name, title: 'Edit milestone', submit: 'Save',
+      fields: [name('', m.name), dueField(m.due_date),
+        ...tasks.map((t, i) => ({ id: 'task' + i, label: `Task ${i + 1} (clear to remove)`, value: t.name }))],
+      onSubmit: async (v) => {
+        await change('milestones', m, { name: v.name, due_date: v.due || null });
+        for (const [i, t] of tasks.entries()) {
+          if (!v['task' + i]) await destroy('tasks', t);
+          else if (v['task' + i] !== t.name) await change('tasks', t, { name: v['task' + i] });
+        }
+        refresh();
+        openMilestone(m);
+      },
+      remove: { label: 'Delete this milestone', confirm: `Delete ${m.name}?`,
+        run: async () => { await destroy('milestones', m); closeSheet(); refresh(); } } });
   }
 
   // ---------- Top bar ----------
@@ -203,6 +322,7 @@ export function startApp(root, user, store) {
   return function stop() {
     stopped = true;
     map?.destroy();
+    road?.destroy();
     closeSheet();
     document.body.classList.remove('lock');
   };
