@@ -38,6 +38,14 @@ export function createFakeStore({ areas = [], failing = false } = {}) {
     guard(`remove ${table}`);
     removeLocal(db, table, id);   // the real database cascades the same way
   };
+  store.checkIn = async (habitId, day) => {
+    guard(`checkIn ${day === new Date().toLocaleDateString('en-CA') ? 'today' : day}`);
+    if (!db.habit_checkins.some((c) => c.habit_id === habitId && c.day === day)) db.habit_checkins.push(row({ habit_id: habitId, day }));
+  };
+  store.undoCheckIn = async (habitId, day) => {
+    guard('undoCheckIn');
+    db.habit_checkins = db.habit_checkins.filter((c) => !(c.habit_id === habitId && c.day === day));
+  };
   store.signOut = async () => { store.signedOut = true; };
   store.rows = (table) => db[table];
   return store;

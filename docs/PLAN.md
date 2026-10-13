@@ -29,7 +29,7 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 - [x] Branching map home, slice 2: goals, targets and paths inside an area, and progress per area. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-12. Until the road exists, tapping a goal or path opens its edit form (name, due date, delete)
 - [x] Journey road per goal (slice 3): milestones as stops, tasks in the milestone sheet, roll-up progress and due dates. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-13
 - [ ] List view of areas
-- [ ] Habits with check-ins and streak counts, daily or a number of times a week (with a "how often" choice in the add and edit forms)
+- [x] Habits (slice 4): a Habits node in each area, the Today strip under the map, check-ins and streaks, daily or a number of times a week with a "how often" choice. Passing `tests/run.sh` and tried signed in on the PC on 2026-10-13
 
 ## Phase 4: Targets and paths
 - [ ] Number targets on goals; log amounts with a note

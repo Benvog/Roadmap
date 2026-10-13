@@ -42,9 +42,10 @@ export function startApp(root, user, store) {
           <button class="btn primary" type="button" id="add-starters">Add ${STARTERS.slice(0, -1).join(', ')} and ${STARTERS.at(-1)}</button>
           <p class="error" id="starter-error" role="alert" hidden>Those could not all be added. Check your connection and try again.</p>
         </div>
+        <div class="habit-strip" id="strip" role="group" aria-label="Today's habits"></div>
       </div>
       <div id="road-screen" hidden></div>`;
-    map = createMap(root.querySelector('#map'), { onAdd, onEdit, onOpen: openRoad });
+    map = createMap(root.querySelector('#map'), { onAdd, onEdit, onOpen: openRoad, onHabits: openHabits });
     road = createRoad(root.querySelector('#road-screen'), {
       getData: () => data,
       onBack: () => showScreen('map'),
@@ -58,6 +59,7 @@ export function startApp(root, user, store) {
     root.querySelector('#theme').addEventListener('click', toggleTheme);
     root.querySelector('#account').addEventListener('click', openAccount);
     root.querySelector('#add-starters').addEventListener('click', addStarters);
+    root.querySelector('#strip').addEventListener('click', tapStrip);
   }
 
   // The map fills the screen and does its own panning; a road is an ordinary page that scrolls.
@@ -78,7 +80,7 @@ export function startApp(root, user, store) {
   function refresh() {
     root.querySelector('#starter').hidden = data.areas.length > 0;
     map.setData(data);
-    if (screen === 'map') map.render(); else road.render();
+    if (screen === 'map') { map.render(); renderStrip(); } else road.render();
   }
 
   // Saves a new row and adds it to the data in memory.
@@ -123,8 +125,8 @@ export function startApp(root, user, store) {
   }
 
   // ---------- Adding ----------
-  // `parent` is the row the "+" hangs from: an area for a goal, a target for a path, a goal for a milestone,
-  // a milestone for a task.
+  // `parent` is the row the "+" hangs from: an area for a goal or a habit, a target for a path, a goal for a
+  // milestone, a milestone for a task.
   function onAdd(kind, parent) {
     if (kind === 'area') {
       openForm({ kicker: 'Your map', title: 'Add an area', submit: 'Add area', fields: [name('Learning, Faith, Family')],
@@ -160,6 +162,14 @@ export function startApp(root, user, store) {
           await create('milestones', { goal_id: parent.id, name: v.name, due_date: v.due || null, position: model.nextPosition(model.milestonesOf(data, parent.id)) });
           closeSheet();
           refresh();
+        } });
+    }
+    if (kind === 'habit') {
+      openForm({ kicker: parent.name, title: 'Add a habit', submit: 'Add habit', fields: [name('Read 20 minutes'), oftenField()],
+        onSubmit: async (v) => {
+          await create('habits', { area_id: parent.id, name: v.name, times_per_week: Number(v.often), position: model.nextPosition(model.habitsIn(data, parent.id)) });
+          refresh();
+          openHabits(parent);
         } });
     }
     if (kind === 'task') {
@@ -298,6 +308,92 @@ export function startApp(root, user, store) {
       },
       remove: { label: 'Delete this milestone', confirm: `Delete ${m.name}?`,
         run: async () => { await destroy('milestones', m); closeSheet(); refresh(); } } });
+  }
+
+  // ---------- Habits: the Today strip under the map, and each area's habits sheet ----------
+  const OFTEN = [{ value: 7, label: 'Every day' }, ...[6, 5, 4, 3, 2].map((n) => ({ value: n, label: n + ' times a week' })), { value: 1, label: 'Once a week' }];
+  const oftenField = (value = 7) => ({ id: 'often', label: 'How often', options: OFTEN, value });
+  let stripProblem = false;   // the last check-in from the strip did not save
+
+  // Checks a habit in for today, or takes today's check-in back.
+  async function toggleHabit(habit) {
+    const day = model.localDay();
+    if (model.habitStatus(data, habit, day).done) {
+      await store.undoCheckIn(habit.id, day);
+      data.habit_checkins = data.habit_checkins.filter((c) => !(c.habit_id === habit.id && c.day === day));
+    } else {
+      await store.checkIn(habit.id, day);
+      data.habit_checkins.push({ id: `local-${habit.id}-${day}`, habit_id: habit.id, day });
+    }
+  }
+  const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+
+  function renderStrip() {
+    const el = root.querySelector('#strip'), today = model.localDay();
+    const all = data.areas.flatMap((area) => model.habitsIn(data, area.id)).map((h) => [h, model.habitStatus(data, h, today)]);
+    const due = all.filter(([, s]) => s.due);
+    const left = el.querySelector('.strip-chips')?.scrollLeft || 0, focused = document.activeElement?.dataset?.chip;
+    const count = stripProblem ? 'Not saved. Check your connection.'
+      : !all.length ? 'No habits yet'
+      : due.length ? `${due.filter(([, s]) => s.done).length} of ${plural(due.length, 'habit')}` : 'All done this week';
+    el.innerHTML = `<span class="strip-label${stripProblem ? ' problem' : ''}"><b>Today</b><small${stripProblem ? ' role="alert"' : ''}>${count}</small></span>
+      <div class="strip-chips">${all.length ? all.map(([h, s]) => `<button class="habit-chip" type="button" data-chip="${h.id}" aria-pressed="${s.done}">
+        <span class="ic">${ICONS.check}</span><span>${esc(h.name)}</span>
+        <small>${s.daily ? plural(s.streak, 'day') : s.week + ' of ' + s.target + ' this week'}</small></button>`).join('')
+        : '<span class="strip-empty">Open an area and tap Habits to add one.</span>'}</div>`;
+    el.querySelector('.strip-chips').scrollLeft = left;
+    if (focused) el.querySelector(`[data-chip="${focused}"]`)?.focus({ preventScroll: true });
+  }
+  async function tapStrip(e) {
+    const chip = e.target.closest('[data-chip]');
+    const habit = chip && data.habits.find((h) => h.id === chip.dataset.chip);
+    if (!habit || chip.disabled) return;
+    chip.disabled = true;
+    try { await toggleHabit(habit); stripProblem = false; } catch (err) { stripProblem = true; }
+    refresh();
+  }
+
+  function openHabits(area, problem = '') {
+    const today = model.localDay(), habits = model.habitsIn(data, area.id);
+    const el = showSheet(`${sheetHead(area.name, 'Habits')}
+      ${habits.length ? `<ul class="tasks habit-list">${habits.map((h) => {
+        const s = model.habitStatus(data, h, today);
+        const note = s.daily ? (s.streak ? s.streak + '-day streak' : 'No streak yet')
+          : s.week + ' of ' + s.target + ' this week' + (s.streak ? ' · ' + s.streak + '-week streak' : '');
+        return `<li><label><input type="checkbox" id="habit-${h.id}" data-habit="${h.id}" ${s.done ? 'checked' : ''}>
+          <span>${esc(h.name)}<small class="muted streak">${note}</small></span></label>
+          <button class="icon-btn small" type="button" data-edit="${h.id}" aria-label="Edit ${esc(h.name)}">${ICONS.pencil}</button></li>`;
+      }).join('')}</ul>
+        <p class="muted">Tick a habit on the days you do it. A streak counts days in a row, or weeks in a row for a habit you do a few times a week.</p>`
+        : '<p class="muted">No habits in this area yet.</p>'}
+      <p class="error" id="sheet-error" role="alert" ${problem ? '' : 'hidden'}>${esc(problem)}</p>
+      <div class="actions"><button class="btn primary" type="button" data-act="add-habit">+ Add a habit</button></div>`);
+    el.onclick = (e) => {
+      const act = e.target.closest('[data-act]')?.dataset.act, edit = e.target.closest('[data-edit]')?.dataset.edit;
+      if (act === 'close') closeSheet();
+      if (act === 'add-habit') onAdd('habit', area);
+      if (edit) editHabit(habits.find((h) => h.id === edit), area);
+    };
+    el.onchange = async (e) => {
+      const habit = habits.find((h) => h.id === e.target.dataset.habit);
+      if (!habit) return;
+      el.querySelectorAll('button, input').forEach((c) => (c.disabled = true));
+      let failed = '';
+      try { await toggleHabit(habit); } catch (err) { failed = SAVE_FAILED; }
+      refresh();
+      openHabits(area, failed);
+    };
+  }
+
+  function editHabit(habit, area) {
+    openForm({ kicker: area.name, title: 'Edit ' + habit.name, submit: 'Save', fields: [name('', habit.name), oftenField(habit.times_per_week)],
+      onSubmit: async (v) => {
+        await change('habits', habit, { name: v.name, times_per_week: Number(v.often) });
+        refresh();
+        openHabits(area);
+      },
+      remove: { label: 'Delete this habit', confirm: `Delete ${habit.name} and its check-ins?`,
+        run: async () => { await destroy('habits', habit); refresh(); openHabits(area); } } });
   }
 
   // ---------- Top bar ----------

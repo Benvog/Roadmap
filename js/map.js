@@ -20,8 +20,8 @@ function edgePath({ a, b, straight, vertical }) {
 }
 
 // `onAdd(kind, parentRow)` and `onEdit(kind, row)` are called when a "+" or a pencil is tapped,
-// and `onOpen(goalRow)` when a goal or a path is tapped.
-export function createMap(root, { onAdd, onEdit, onOpen }) {
+// `onOpen(goalRow)` when a goal or a path is tapped, and `onHabits(areaRow)` when an area's Habits node is tapped.
+export function createMap(root, { onAdd, onEdit, onOpen, onHabits }) {
   root.innerHTML = `<div id="viewport"><div id="world"><svg id="edges" aria-hidden="true"></svg><div id="nodes"></div></div></div>
     <div class="zoom">
       <button class="icon-btn" type="button" data-zoom="in" aria-label="Zoom in">+</button>
@@ -35,7 +35,7 @@ export function createMap(root, { onAdd, onEdit, onOpen }) {
 
   const open = new Set();
   const view = { x: 0, y: 0, k: 1 };
-  let data = { areas: [], goals: [], milestones: [], entries: [] };
+  let data = { areas: [], goals: [], milestones: [], entries: [], habits: [], habit_checkins: [] };
   let byId = {}, seen = new Set();
 
   // ---------- Layout ----------
@@ -45,8 +45,9 @@ export function createMap(root, { onAdd, onEdit, onOpen }) {
     const kind = model.kindOf(g);
     return { id: g.id, type: 'goal', kind, src: g, kids: kind === 'target' ? [...model.pathsOf(data, g.id).map(goalNode), addNode(g, 'path')] : [] };
   };
-  // Each area unfolds its goals and a "+" to add a goal. (Its Habits node comes with the habits slice.)
-  const buildTree = () => data.areas.map((a) => ({ id: a.id, type: 'area', src: a, kids: [...model.goalsIn(data, a.id).map(goalNode), addNode(a, 'goal')] }));
+  // Each area unfolds its goals, a "+" to add a goal, and its Habits node.
+  const buildTree = () => data.areas.map((a) => ({ id: a.id, type: 'area', src: a, kids: [
+    ...model.goalsIn(data, a.id).map(goalNode), addNode(a, 'goal'), { id: a.id + '-habits', type: 'habits', src: a, kids: [], sw: 142, sh: 64 }] }));
   // Room a branch needs across its direction of growth (px, py is that sideways axis).
   const span = (n, px, py) => (open.has(n.id) && n.kids.length
     ? n.kids.reduce((sum, k) => sum + span(k, px, py), 0)
@@ -88,7 +89,7 @@ export function createMap(root, { onAdd, onEdit, onOpen }) {
     const cls = (seen.has(n.id) ? '' : ' new') + (open.has(n.id) ? ' open' : '');
     if (n.type === 'you') return `<button class="node you${open.has('you') ? '' : ' closed'}" data-id="you" style="${at}" aria-expanded="${open.has('you')}">You</button>`;
     if (n.type === 'area') {
-      const p = model.areaProgress(data, n.id).percent, hasGoals = n.kids.length > 1;
+      const p = model.areaProgress(data, n.id).percent, hasGoals = n.kids.length > 2;
       return `<button class="node area${cls}" data-id="${n.id}" style="${at};--p:${p}" aria-expanded="${open.has(n.id)}">
         <span class="disc"><b>${esc(n.src.name)}</b><small>${hasGoals ? p + '%' : 'No goals'}</small></span></button>`;
     }
@@ -104,6 +105,12 @@ export function createMap(root, { onAdd, onEdit, onOpen }) {
       const steps = total ? `${done} of ${total} done` : 'No milestones yet';
       const sub = n.kind === 'path' ? (total ? `${done} of ${total} · ` : '') + amount(model.earnedOn(data, g.id), unit) + (total ? '' : ' earned') : steps;
       return `<button class="node goal${cls}" data-id="${n.id}" style="${at}"><b>${esc(g.name)}</b><small>${esc(sub)}</small></button>`;
+    }
+    if (n.type === 'habits') {
+      const today = model.localDay(), due = model.habitsIn(data, n.src.id).map((h) => model.habitStatus(data, h, today)).filter((s) => s.due);
+      const none = !model.habitsIn(data, n.src.id).length;
+      return `<button class="node habits${cls}" data-id="${n.id}" style="${at}"><b>Habits</b>
+        <small>${none ? 'None yet' : due.length ? due.filter((s) => s.done).length + ' of ' + due.length + ' today' : 'All done this week'}</small></button>`;
     }
     if (n.type === 'edit') return `<button class="node edit${cls}" data-id="${n.id}" style="${at}" aria-label="Edit ${esc(n.src.name)}">${ICONS.pencil}</button>`;
     const label = 'Add ' + (n.add === 'area' ? 'an area' : 'a ' + n.add + ' to ' + n.src.name);
@@ -202,10 +209,11 @@ export function createMap(root, { onAdd, onEdit, onOpen }) {
     Object.assign(view, { x: vp.clientWidth / 2, y: vp.clientHeight * 0.45, k: OVERVIEW });
     apply(glide);
   }
-  // Opening a node travels in to full size and puts it on the side it grows away from, clear of the top bar.
+  // Opening a node travels in to full size and puts it on the side it grows away from, clear of the top bar
+  // and the Today strip (about 70px) along the bottom.
   function focusOn(n) {
     view.k = 1;
-    const w = vp.clientWidth, h = vp.clientHeight, [dx, dy] = n.d;
+    const w = vp.clientWidth, h = vp.clientHeight - 70, [dx, dy] = n.d;
     const deeper = n.type === 'area' ? 0 : 80;
     view.x = w / 2 - dx * (w / 2 - 84) - n.x * view.k;
     view.y = h / 2 + 40 - dy * (h / 2 - 110 - deeper) - n.y * view.k;
@@ -230,6 +238,7 @@ export function createMap(root, { onAdd, onEdit, onOpen }) {
     }
     if (n.type === 'add') return onAdd(n.add, n.src);
     if (n.type === 'edit') return onEdit(n.kind, n.src);
+    if (n.type === 'habits') return onHabits(n.src);
     if (n.type === 'goal' && n.kind !== 'target') return onOpen(n.src);
     if (open.has(n.id)) open.delete(n.id); else open.add(n.id);
     render();

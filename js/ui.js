@@ -61,15 +61,18 @@ export const SAVE_FAILED = 'That could not be saved. Check your connection and t
 // Throw this from a form's onSubmit to show the person a specific message instead of the general one.
 export class FormError extends Error {}
 
-// A form in the sheet. `fields` are { id, label, type, value, placeholder }; a first field with id "name" is required.
+// A form in the sheet. `fields` are { id, label, type, value, placeholder }, or { id, label, options, value } for a
+// pick-one list; a first field with id "name" is required.
 // `onSubmit(values)`, each `extras[].run()` and `remove.run()` may be async; a failure shows a message and keeps the form open.
 export function openForm({ kicker, title, fields, submit, onSubmit, extras = [], remove }) {
   const askDelete = remove && `<button class="btn" type="button" data-act="ask-delete">${esc(remove.label)}</button>`;
   const el = showSheet(`${sheetHead(kicker, title)}
     <form id="sheet-form" novalidate>
-      ${fields.map((f) => `<div class="field"><label for="f-${f.id}">${esc(f.label)}</label>
-        <input id="f-${f.id}" type="${f.type || 'text'}" ${f.type === 'number' ? 'inputmode="numeric" min="1" step="1"' : 'maxlength="60"'}
-          value="${esc(f.value)}" placeholder="${esc(f.placeholder)}" autocomplete="off"></div>`).join('')}
+      ${fields.map((f) => `<div class="field"><label for="f-${f.id}">${esc(f.label)}</label>${f.options
+        ? `<select id="f-${f.id}">${f.options.map((o) =>
+          `<option value="${esc(o.value)}"${String(o.value) === String(f.value) ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`
+        : `<input id="f-${f.id}" type="${f.type || 'text'}" ${f.type === 'number' ? 'inputmode="numeric" min="1" step="1"' : 'maxlength="60"'}
+          value="${esc(f.value)}" placeholder="${esc(f.placeholder)}" autocomplete="off">`}</div>`).join('')}
       <p class="error" id="sheet-error" role="alert" hidden></p>
       <div class="actions"><button class="btn primary" type="submit">${esc(submit)}</button>
         ${extras.map((x, n) => `<button class="btn" type="button" data-extra="${n}">${esc(x.label)}</button>`).join('')}</div>

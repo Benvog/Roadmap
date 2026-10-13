@@ -13,7 +13,7 @@
   Runs the real app with a stand-in store (tests/fake-store.js): no sign-in, nothing saved.
   ?areas=empty   start with no areas (the default is Career, Health, Money, Mental)
   ?seed=1        put a KES 100,000 target with two paths in Money
-  ?seed=2        the same, plus milestones and tasks on Remote work
+  ?seed=2        the same, plus milestones and tasks on Remote work, and three habits with some history
   ?fail=1        every load and save fails, like having no connection
   ?theme=dark    or light
 -->
@@ -48,6 +48,14 @@ if (seed >= 2) {
   await store.add('tasks', { milestone_id: gigs.id, name: 'Shortlist 5 gigs', position: 0, done_at: '2026-10-10T09:00:00Z' });
   await store.add('tasks', { milestone_id: gigs.id, name: 'Write the proposals', position: 1, done_at: null });
   await store.add('tasks', { milestone_id: gigs.id, name: 'Send and log them', position: 2, done_at: null });
+  // Habits with some history, counted back from today so the streaks always show.
+  const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toLocaleDateString('en-CA'); };
+  const area = (name) => store.rows('areas').find((x) => x.name === name).id;
+  const charts = await store.add('habits', { area_id: area('Money'), name: 'Study the charts', times_per_week: 7, position: 0 });
+  for (const n of [1, 2, 3, 4]) await store.checkIn(charts.id, ago(n));
+  const workout = await store.add('habits', { area_id: area('Health'), name: 'Workout', times_per_week: 3, position: 0 });
+  await store.checkIn(workout.id, ago(0));
+  await store.add('habits', { area_id: area('Mental'), name: 'Journal 10 minutes', times_per_week: 7, position: 0 });
 }
 store.calls.length = 0;
 window.fakeStore = store;

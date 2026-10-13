@@ -26,8 +26,10 @@ async function open(query) {
   const stops = () => [...d.querySelectorAll('.stop:not(.add-stop)')].map((s) => s.querySelector('b').textContent + ' [' + s.className.replace('stop', '').trim() + ': ' + s.querySelector('small').textContent + ']').join(' ; ');
   const tasks = () => [...d.querySelectorAll('.tasks input')].map((c) => (c.checked ? '[x] ' : '[ ] ') + c.closest('label').textContent.trim()).join(' ; ');
   const progress = () => q('#road-progress').textContent.replace(/\s+/g, ' ').trim();
+  const strip = () => q('.strip-label').textContent.replace(/\s+/g, ' ').trim() + ' || ' + [...d.querySelectorAll('.habit-chip')].map((c) => (c.getAttribute('aria-pressed') === 'true' ? '[x] ' : '[ ] ') + c.textContent.replace(/\s+/g, ' ').trim()).join(' ; ');
+  const habitRows = () => [...d.querySelectorAll('.habit-list li')].map((li) => (li.querySelector('input').checked ? '[x] ' : '[ ] ') + li.querySelector('label').textContent.replace(/\s+/g, ' ').trim()).join(' ; ');
   const submit = async (ms = 900) => { tap('#sheet-form [type=submit]'); await wait(ms); };
-  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, stops, tasks, progress, store: w.fakeStore };
+  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, stops, tasks, progress, strip, habitRows, store: w.fakeStore };
 }
 async function scenario(name, query, steps) {
   const log = [];
@@ -153,6 +155,41 @@ async function scenario(name, query, steps) {
     t.tapNode('.goal', 'Remote work'); await wait(300); t.d.querySelectorAll('.stop')[1].click(); t.tap('[data-act="done"]'); await wait(500);
     say('all done', t.progress() + ' | finish reached: ' + t.q('.finish').classList.contains('reached'));
     say('page overflow on road', t.d.documentElement.scrollWidth > 390);
+    say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
+  });
+  await scenario('habits', '?theme=light', async (t, say) => {
+    say('strip with no habits', t.strip() + ' ' + (t.q('.strip-empty')?.textContent || ''));
+    t.tap(t.node('you')); await wait(1300); t.tapNode('.area', 'Health'); await wait(1100);
+    const health = t.find('.area', 'Health').dataset.id;
+    say('habits node', t.q(t.node(health + '-habits')).textContent.replace(/\s+/g, ' ').trim());
+    t.tap(t.node(health + '-habits')); say('empty sheet', t.sheet().querySelector('.kicker').textContent + ' / ' + t.sheet().querySelector('h2').textContent + ' / ' + t.sheet().querySelector('p.muted').textContent);
+    t.tap('[data-act="add-habit"]'); say('how often choices', [...t.d.querySelectorAll('#f-often option')].map((o) => o.textContent + (o.selected ? '*' : '')).join(', '));
+    t.fill('f-name', 'Drink 2 L of water'); await t.submit(500);
+    t.tap('[data-act="add-habit"]'); t.fill('f-name', 'Workout'); t.fill('f-often', '3'); await t.submit(500);
+    say('two habits', t.habitRows() + ' | saved: ' + t.store.rows('habits').map((h) => h.name + ' x' + h.times_per_week).join(', '));
+    say('strip', t.strip());
+    say('node', t.q(t.node(health + '-habits')).textContent.replace(/\s+/g, ' ').trim());
+    t.d.querySelectorAll('.habit-list input')[1].click(); await wait(400);
+    say('ticked in sheet', t.habitRows() + ' | strip: ' + t.strip());
+    t.tap('[data-act="close"]');
+    t.d.querySelectorAll('.habit-chip')[0].click(); await wait(400);
+    say('ticked on strip', t.strip() + ' | node: ' + t.q(t.node(health + '-habits')).textContent.replace(/\s+/g, ' ').trim() + ' | check-ins saved: ' + t.store.rows('habit_checkins').length);
+    t.d.querySelectorAll('.habit-chip')[0].click(); await wait(400);
+    say('undone on strip', t.strip() + ' | check-ins saved: ' + t.store.rows('habit_checkins').length);
+    t.store.failing = true; t.d.querySelectorAll('.habit-chip')[0].click(); await wait(400);
+    say('strip with no connection', t.strip());
+    t.store.failing = false; t.d.querySelectorAll('.habit-chip')[0].click(); await wait(400);
+    say('works again', t.strip());
+    t.tap(t.node(health + '-habits')); t.store.failing = true; t.d.querySelectorAll('.habit-list input')[0].click(); await wait(400);
+    say('sheet with no connection', t.q('#sheet-error').textContent + ' | ' + t.habitRows()); t.store.failing = false;
+    t.d.querySelectorAll('.habit-list [data-edit]')[1].click(); say('edit form', t.sheet().querySelector('h2').textContent + ' / ' + t.q('#f-name').value + ' / ' + t.q('#f-often').value);
+    t.fill('f-name', 'Gym <b>session</b>'); t.fill('f-often', '7'); await t.submit(500);
+    say('edited', t.habitRows() + ' | tags stayed text: ' + !t.q('.habit-list b'));
+    t.d.querySelectorAll('.habit-list [data-edit]')[0].click(); t.tap('[data-act="ask-delete"]'); say('delete asks', t.q('#sheet-danger p').textContent);
+    t.tap('[data-act="delete"]'); await wait(500);
+    say('deleted', t.habitRows() + ' | strip: ' + t.strip() + ' | check-ins left: ' + t.store.rows('habit_checkins').length);
+    t.tap('[data-act="close"]');
+    say('controls clear of the strip', 'zoom bottom ' + Math.round(t.q('.zoom').getBoundingClientRect().bottom) + ' <= strip top ' + Math.round(t.q('#strip').getBoundingClientRect().top));
     say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
   });
   await scenario('empty', '?areas=empty', async (t, say) => {

@@ -71,4 +71,36 @@ assert.equal(ids(afterArea.goals), 'run');
 assert.equal(afterArea.milestones.length + afterArea.tasks.length + afterArea.habits.length + afterArea.habit_checkins.length
   + afterArea.entries.length + afterArea.funding.length, 0);
 
+// ---------- Habits ----------
+// 2026-10-12 is a Monday.
+assert.equal(model.shiftDay('2026-10-01', -1), '2026-09-30', 'days step across a month end');
+assert.equal(model.shiftDay('2026-12-31', 1), '2027-01-01');
+assert.equal(model.weekStart('2026-10-12'), '2026-10-12', 'a Monday starts its own week');
+assert.equal(model.weekStart('2026-10-18'), '2026-10-12', 'a Sunday belongs to the week that started on Monday');
+assert.equal(model.weekStart('2026-10-14'), '2026-10-12');
+
+const habitData = (habit, days) => ({ habits: [habit], habit_checkins: days.map((day, i) => ({ id: 'c' + i, habit_id: habit.id, day })) });
+const daily = { id: 'd', times_per_week: 7 }, thrice = { id: 'w', times_per_week: 3 };
+const status = (habit, days, today) => model.habitStatus(habitData(habit, days), habit, today);
+
+// A daily habit counts days in a row.
+assert.deepEqual(status(daily, [], '2026-10-14'), { done: false, daily: true, week: 0, target: 7, due: true, streak: 0 });
+assert.equal(status(daily, ['2026-10-12', '2026-10-13', '2026-10-14'], '2026-10-14').streak, 3);
+assert.equal(status(daily, ['2026-10-12', '2026-10-13'], '2026-10-14').streak, 2, 'not done yet today does not break yesterday\'s streak');
+assert.equal(status(daily, ['2026-10-11', '2026-10-12'], '2026-10-14').streak, 0, 'a missed day does');
+assert.equal(status(daily, ['2026-10-10', '2026-10-13', '2026-10-14'], '2026-10-14').streak, 2, 'only the unbroken run counts');
+assert.equal(status(daily, ['2026-10-14'], '2026-10-14').done, true);
+assert.equal(status(daily, ['2026-10-14'], '2026-10-14').due, true, 'a daily habit always shows for today');
+
+// A three-times-a-week habit counts this week's check-ins and weeks in a row that reached three.
+const lastWeek = ['2026-10-05', '2026-10-07', '2026-10-09'], weekBefore = ['2026-09-28', '2026-09-30', '2026-10-04'];
+assert.deepEqual(status(thrice, ['2026-10-12', '2026-10-13'], '2026-10-14'), { done: false, daily: false, week: 2, target: 3, due: true, streak: 0 });
+assert.equal(status(thrice, [...lastWeek, '2026-10-12'], '2026-10-14').streak, 1, 'a week still in progress does not break the streak');
+assert.equal(status(thrice, [...weekBefore, ...lastWeek, '2026-10-12', '2026-10-13', '2026-10-14'], '2026-10-14').streak, 3, 'this week counts once it is reached');
+assert.equal(status(thrice, [...weekBefore, '2026-10-12'], '2026-10-14').streak, 0, 'a week that fell short breaks it');
+assert.equal(status(thrice, ['2026-10-12', '2026-10-13', '2026-10-14'], '2026-10-15').due, false, 'a weekly habit that has met its target is not due');
+assert.equal(status(thrice, ['2026-10-12', '2026-10-13', '2026-10-14'], '2026-10-14').due, true, 'unless today is one of the days it was done');
+assert.equal(status(thrice, ['2026-10-11'], '2026-10-12').week, 0, 'Sunday\'s check-in belongs to last week');
+assert.equal(ids(model.habitsIn(data, 'money')), 'h1');
+
 console.log('model: all checks passed');

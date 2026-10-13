@@ -7,15 +7,16 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 ## Where things stand (2026-10-13)
 - Phase 1 (design) is done: every screen and behaviour is decided and mocked in `mockups/prototype.html`.
 - Phase 2 (data and setup) is done except view-offline, which waits until a screen shows real data.
-- The real app so far is sign-in, the data layer, the map (You, areas, goals, targets and paths) and a goal's
-  road with milestones and tasks. All of it saves to Supabase.
+- The real app so far is sign-in, the data layer, the map (You, areas, goals, targets and paths), a goal's
+  road with milestones and tasks, and habits (the Habits node, the Today strip, check-ins and streaks).
+  All of it saves to Supabase.
 - Phase 3 goes in slices: You and areas (done); goals, targets and paths (done); a goal's road with milestones
-  and tasks (done); next habits; then logging and funding. Port behaviour
+  and tasks (done); habits (done); next logging and funding. Port behaviour
   from the prototype, do not redesign it.
 - Each slice has gone the same way and should keep doing so: build it, extend `tests/drive.html`, run
   `bash tests/run.sh`, look at phone-width screenshots, then ask the user to try it signed in at
   http://localhost:8000 before committing.
-- Not yet in the real app (all are in the prototype): the Habits node and the Today strip, logging amounts
+- Not yet in the real app (all are in the prototype): logging amounts
   (the road shows a path's totals but has no "Log amount" button yet), funding a locked milestone (the locked
   state is worked out and drawn, but nothing can set a funding amount yet), the List view.
 
@@ -41,8 +42,8 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - `js/ui.js`: `esc`, icons, and the bottom sheet with its forms (`openForm`).
 - `tests/`: `run.sh` runs `model.test.mjs` with Node, then `drive.html`, which drives the real app through
   `app.html` using `fake-store.js` (an in-memory stand-in for `store.js`). `tests/app.html` can also be opened by
-  hand to see the app without signing in (`?seed=1` adds a target with paths, `?seed=2` also adds milestones and
-  tasks). `tests/shot.html` taps through a
+  hand to see the app without signing in (`?seed=1` adds a target with paths, `?seed=2` also adds milestones,
+  tasks and habits with some history). `tests/shot.html` taps through a
   list of things inside a 390px frame, for phone-width screenshots.
 - `js/store.js`: the only module that talks to Supabase. Sign-in functions, then `loadAll`, `add`, `update`,
   `remove`, `checkIn`, `undoCheckIn`. `loadAll` returns flat lists keyed by table name; nothing computes totals yet.
@@ -90,8 +91,11 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - Money shows as `KES 100,000`. Targets can also count non-money things (books, kg).
 - All Supabase calls go through `js/store.js` so the data layer can change in one place.
 - Anything a user typed is escaped before it goes into HTML (`esc` in `js/ui.js`). `openForm` and `sheetHead` escape what they are given.
-- Habits are daily or a number of times a week (`times_per_week`, 7 means daily). The prototype's habit
-  forms do not have the "how often" choice yet; the real forms need it.
+- Habits are daily or a number of times a week (`times_per_week`, 7 means daily), chosen with "How often" in the
+  add and edit forms. `habitStatus` in `model.js` works out done today, this week's count and the streak; weeks
+  run Monday to Sunday and a week still in progress does not break a weekly streak. A check-in is for today on
+  the device (`model.localDay()`); past days cannot be changed. Each habit is edited on its own (the pencil on
+  its row), not all in one form as in the prototype, because each now has its own "how often".
 - Offline is view-only: the last loaded data is kept on the device and shown with an "offline" note;
   changes need a connection.
 - No reminders, charts/history or sharing in v1 (see PRD "Not building").
