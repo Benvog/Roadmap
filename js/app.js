@@ -8,6 +8,12 @@ import { esc, ICONS, FormError, SAVE_FAILED, amount, niceDate, openForm, showShe
 const STARTERS = ['Career', 'Health', 'Money', 'Mental'];   // clockwise from the top, so Money sits at the bottom
 const STATE_LABEL = { done: 'Done', next: 'Next step', todo: 'Coming up', locked: 'Locked' };
 
+// Chrome and Edge announce when the app can be installed; holding on to that lets the account sheet offer it.
+// (Safari on iPhone has no such signal: there it is Share, then "Add to Home Screen".)
+let installOffer = null;
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installOffer = e; });
+addEventListener('appinstalled', () => { installOffer = null; });
+
 // Starts the app inside `root` and returns a function that stops it (used on sign-out).
 export function startApp(root, user, store) {
   let stopped = false, map = null, road = null, data = null, screen = 'map';
@@ -501,12 +507,18 @@ export function startApp(root, user, store) {
     const el = showSheet(`${sheetHead('Signed in as', user.email)}
       ${note ? `<p class="sheet-note" role="status">${esc(note)}</p>` : ''}
       <div class="actions">
+        ${installOffer ? '<button class="btn primary" type="button" data-act="install">Install Vektor on this device</button>' : ''}
         <button class="btn" type="button" data-act="password">Set or change password</button>
         <button class="btn" type="button" data-act="sign-out">Sign out</button></div>`);
     el.onclick = (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act === 'close') closeSheet();
       if (act === 'password') openPassword();
+      if (act === 'install' && installOffer) {
+        installOffer.prompt();
+        installOffer = null;   // an offer can only be shown once
+        closeSheet();
+      }
       if (act === 'sign-out') store.signOut();
     };
   }

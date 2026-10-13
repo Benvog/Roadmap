@@ -253,6 +253,13 @@ async function scenario(name, query, steps, page) {
   }, 'signin');
   await scenario('account', '?theme=light', async (t, say) => {
     t.tap('#account'); say('account sheet', t.sheet().textContent.replace(/\s+/g, ' ').trim());
+    // The browser's "this can be installed" signal, faked: the account sheet should then offer it once.
+    let prompted = 0;
+    t.w.dispatchEvent(Object.assign(new t.w.Event('beforeinstallprompt', { cancelable: true }), { prompt: () => { prompted++; } }));
+    t.tap('[data-act="close"]'); t.tap('#account');
+    say('install offered', !!t.q('[data-act="install"]') + ' | ' + (t.q('[data-act="install"]')?.textContent || ''));
+    t.tap('[data-act="install"]'); t.tap('#account');
+    say('install tapped', 'browser asked: ' + prompted + ' | offered again: ' + !!t.q('[data-act="install"]'));
     const fields = () => [...t.d.querySelectorAll('#sheet-form input')].map((i) => t.d.querySelector('label[for=' + i.id + ']').textContent).join(' | ');
     t.tap('[data-act="password"]'); await wait(200);
     say('signed in with a password', t.sheet().querySelector('h2').textContent + ' | asks for: ' + fields());

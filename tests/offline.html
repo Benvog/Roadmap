@@ -1,0 +1,53 @@
+<!doctype html><body style="margin:0;background:#888"><iframe id="f" style="width:390px;height:844px;border:0;display:block"></iframe>
+<script>
+// Checks the service worker: that it installs and keeps the app's files, and that the app still opens when the
+// server is gone. tests/offline.sh runs this page and stops and restarts the server while it waits.
+// It drives the real page, so it only runs on this PC.
+if (!['localhost', '127.0.0.1'].includes(location.hostname)) throw new Error('This test page only runs on localhost.');
+const f = document.getElementById('f'), run = new URLSearchParams(location.search).get('run');
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const alive = () => fetch('/tests/offline.html?ping=' + Date.now(), { cache: 'no-store' }).then((r) => r.ok, () => false);
+const load = async (src) => {
+  const loaded = new Promise((r) => f.addEventListener('load', r, { once: true }));
+  f.src = src;
+  await loaded;
+  for (let i = 0; i < 60 && !f.contentDocument.querySelector('.card h1'); i++) await wait(100);
+  return f.contentDocument.querySelector('.card h1')?.textContent || 'NOTHING DREW';
+};
+(async () => {
+  const log = [];
+  try {
+    log.push('online: ' + await load('/index.html?sw=1'));
+    const sw = f.contentWindow.navigator.serviceWorker;
+    const reg = await Promise.race([sw.ready, wait(8000).then(() => null)]);
+    for (let i = 0; i < 50 && !sw.controller; i++) await wait(100);
+    const kept = (await (await caches.open('vektor-shell')).keys()).map((r) => new URL(r.url).pathname).sort();
+    log.push('worker ready: ' + !!reg + ' | in charge of the page: ' + !!sw.controller + ' | files kept: ' + kept.length);
+    const needed = ['/', '/index.html', '/css/app.css', '/js/main.js', '/js/app.js', '/js/store.js', '/js/vendor/supabase-2.45.4.js', '/assets/icon.svg'];
+    log.push('missing from the kept copy: ' + (needed.filter((p) => !kept.includes(p)).join(', ') || 'none'));
+    const manifest = await (await fetch('/manifest.webmanifest')).json();
+    const icons = await Promise.all(manifest.icons.map((i) => fetch('/' + i.src).then((r) => i.sizes + ' ' + i.purpose + (r.ok ? '' : ' MISSING'))));
+    log.push('manifest: ' + manifest.name + ', ' + manifest.display + ', start ' + manifest.start_url + ' | icons: ' + icons.join('; '));
+    await fetch('/__result?run=' + run + '&name=installed&log=' + encodeURIComponent(log.join(' ## ')));
+
+    // offline.sh now stops the server. Wait for it to go, open the app again, then wait for it to come back.
+    for (let i = 0; i < 100 && await alive(); i++) await wait(200);
+    const off = ['server reachable: ' + await alive()];
+    off.push('app opened offline: ' + await load('/index.html?sw=1&again=' + Date.now()));
+    off.push('styled: ' + (f.contentWindow.getComputedStyle(f.contentDocument.querySelector('.card')).borderRadius === '20px'));
+    off.push('icon drew: ' + (f.contentDocument.querySelector('.brand img').naturalWidth > 0));
+    for (let i = 0; i < 150 && !(await alive()); i++) await wait(200);
+    // Back online: a changed file on the server must replace the kept copy.
+    const before = await (await (await caches.open('vektor-shell')).match('/css/app.css')).text();
+    await fetch('/__result?run=' + run + '&name=offline&log=' + encodeURIComponent(off.join(' ## ')));
+    await load('/index.html?sw=1&third=' + Date.now());
+    await wait(500);
+    const after = await (await (await caches.open('vektor-shell')).match('/css/app.css')).text();
+    const on = ['a changed stylesheet replaced the kept one: ' + (after !== before && after.includes('offline-test-marker'))];
+    await fetch('/__result?run=' + run + '&name=updated&log=' + encodeURIComponent(on.join(' ## ')));
+  } catch (e) {
+    await fetch('/__result?run=' + run + '&name=error&log=' + encodeURIComponent('ERROR ' + e.message + ' ## ' + log.join(' ## '))).catch(() => {});
+  }
+  await fetch('/__result?run=' + run + '&name=done&log=finished').catch(() => {});
+})();
+</script></body>

@@ -32,7 +32,8 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
   tried and dropped: Supabase's built-in email cannot be edited to include a code without custom SMTP.
 - Hosted on GitHub Pages at https://benvog.github.io/Roadmap/ (public repo `Benvog/Roadmap`, pushed over SSH). The
   capital R matters: the lowercase address is a 404, and Supabase must be given the address with the capital R.
-  Installable as a PWA (not built yet).
+- Installable to the home screen: `manifest.webmanifest`, PNG icons in `assets/` (drawn by `tools/make_icons.py`,
+  which must be kept in step with `assets/icon.svg`), and the service worker `sw.js`.
 
 ## Files
 - `index.html`, `css/app.css`: the app shell and styles. Tokens at the top of `app.css` match "Look" below.
@@ -51,6 +52,8 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
   hand to see the app without signing in (`?seed=1` adds a target with paths, `?seed=2` also adds milestones,
   tasks, a part-funded locked deposit and habits with some history). `tests/signin.html` does the same for the sign-in screens (the right
   password is "correct horse"). `tests/shot.html` taps through a list of things inside a 390px frame, for phone-width screenshots.
+  `bash tests/offline.sh` checks the service worker on a temp copy of the app: it installs, the app opens with
+  the server stopped, and a changed file replaces the kept copy. Run it when `sw.js` or the list of files changes.
 - `js/store.js`: the only module that talks to Supabase. Sign-in functions, then `loadAll`, `add`, `update`,
   `remove`, `checkIn`, `undoCheckIn`. `loadAll` returns flat lists keyed by table name; nothing computes totals yet.
 - `js/config.js`: the Supabase project URL and publishable key. Both are public by design.
@@ -58,7 +61,12 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
   Both have been run. Change the schema by adding a new dated script and having the user run it in the
   Supabase SQL editor; never edit a script that has already been run.
 - `docs/DATA-MODEL.md`: the eight tables, the rules, and what is calculated instead of stored.
-- `assets/icon.svg`: the app icon.
+- `assets/icon.svg`: the app icon. The PNGs beside it are generated from the same shapes by `tools/make_icons.py`.
+- `sw.js`: the service worker. For the app's own files only (the page and anything under `js/`, `css/`, `assets/`)
+  it asks the server for the current copy every time and falls back to the last copy it kept when offline. It
+  never handles Supabase requests and stores no account data. A new file the app needs offline must be added to
+  its `SHELL` list. `main.js` registers it everywhere except localhost, where it needs `?sw=1`.
+- `js/session.js`: reads how a session began from its token, to decide whether to ask for the current password.
 - `mockups/`: the prototype and earlier design options (see "Mockups").
 
 ## Run locally
@@ -69,8 +77,8 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
   plain server, Chrome kept an old `store.js` for hours while loading a new `app.js`, so a new function was
   missing and the app reported a failed save. If something that passes the tests fails in the user's browser
   right after a change, suspect a stale file first and ask for a hard refresh (Ctrl+Shift+R).
-- The live site has the same risk for about ten minutes after a push (GitHub Pages lets browsers keep files that
-  long). The service worker planned for the home-screen install should load each new version as a whole.
+- On the live site the service worker prevents that: it re-checks every app file with the server on each load.
+  The first load after the service worker itself changes can still use the old worker once.
 - Sign-in links only return to addresses allowed in Supabase (Authentication, URL Configuration):
   `http://localhost:8000/**` and `https://benvog.github.io/Roadmap/**`. Password sign-in does not depend on this.
 - Supabase's built-in email only sends a few sign-in emails an hour. Several tries in a row lock sign-in out for
