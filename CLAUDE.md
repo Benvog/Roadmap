@@ -25,12 +25,19 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
   so each user only sees their own rows.
 - `supabase-js` is a pinned copy in `js/vendor` (see its README), loaded by `index.html` as `window.supabase`.
   Do not load code from a CDN at run time. Google Fonts (a stylesheet) is the only outside resource.
-- Sign-in uses the PKCE flow: a link only works in the browser that asked for it.
-- Hosted on GitHub Pages (public repo `Benvog/roadmap`, pushed over SSH). Installable as a PWA (not built yet).
+- Sign-in is by email and password (`signInWithPassword` in `store.js`). A password is set from the account
+  sheet (`openPassword` in `app.js`). An emailed link is the fallback for an account with no password yet; it
+  uses the PKCE flow, so it only works in the browser that asked for it, and on a phone the email app often
+  opens links elsewhere. Decided on 2026-10-13 after that failed on the phone. A code typed from the email was
+  tried and dropped: Supabase's built-in email cannot be edited to include a code without custom SMTP.
+- Hosted on GitHub Pages at https://benvog.github.io/Roadmap/ (public repo `Benvog/Roadmap`, pushed over SSH). The
+  capital R matters: the lowercase address is a 404, and Supabase must be given the address with the capital R.
+  Installable as a PWA (not built yet).
 
 ## Files
 - `index.html`, `css/app.css`: the app shell and styles. Tokens at the top of `app.css` match "Look" below.
-- `js/main.js`: starts the app, draws the sign-in screens, and hands over to `js/app.js` once there is a user.
+- `js/main.js`: starts the app and switches between the sign-in screens and the app as people sign in and out.
+- `js/signin.js`: the sign-in screens (email and password, or an emailed link). The store is passed in, as with `app.js`.
 - `js/app.js`: the signed-in app. `startApp(root, user, store)` loads the data, runs the map and handles adding and
   editing. The store is passed in, so tests can run the real app with a stand-in.
 - `js/map.js`: the map itself (layout, the opening motion, the camera, pan and zoom). It only draws and reports taps.
@@ -42,8 +49,8 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - `tests/`: `run.sh` runs `model.test.mjs` with Node, then `drive.html`, which drives the real app through
   `app.html` using `fake-store.js` (an in-memory stand-in for `store.js`). `tests/app.html` can also be opened by
   hand to see the app without signing in (`?seed=1` adds a target with paths, `?seed=2` also adds milestones,
-  tasks, a part-funded locked deposit and habits with some history). `tests/shot.html` taps through a
-  list of things inside a 390px frame, for phone-width screenshots.
+  tasks, a part-funded locked deposit and habits with some history). `tests/signin.html` does the same for the sign-in screens (the right
+  password is "correct horse"). `tests/shot.html` taps through a list of things inside a 390px frame, for phone-width screenshots.
 - `js/store.js`: the only module that talks to Supabase. Sign-in functions, then `loadAll`, `add`, `update`,
   `remove`, `checkIn`, `undoCheckIn`. `loadAll` returns flat lists keyed by table name; nothing computes totals yet.
 - `js/config.js`: the Supabase project URL and publishable key. Both are public by design.
@@ -55,17 +62,24 @@ Read `docs/PRD.md` for the why and scope, and `docs/PLAN.md` for where the build
 - `mockups/`: the prototype and earlier design options (see "Mockups").
 
 ## Run locally
-- `"%LOCALAPPDATA%\Programs\Python\Python313\python.exe" -m http.server 8000` from the repo root,
+- `"%LOCALAPPDATA%\Programs\Python\Python313\python.exe" tools/serve.py` from the repo root,
   then open http://localhost:8000. (Plain `python` is broken on this PC.) Node 24 is installed and is
   handy for `node --check <file>`.
-- Sign-in links only return to addresses allowed in Supabase (Authentication, URL Configuration).
-  `http://localhost:8000` is allowed, so sign-in only works on this PC for now; the GitHub Pages address
-  has to be added at deploy. A phone cannot test sign-in until then.
-- Supabase's built-in email only sends a few sign-in emails an hour.
+- Use `tools/serve.py`, not `python -m http.server`: it tells the browser not to keep copies of files. With the
+  plain server, Chrome kept an old `store.js` for hours while loading a new `app.js`, so a new function was
+  missing and the app reported a failed save. If something that passes the tests fails in the user's browser
+  right after a change, suspect a stale file first and ask for a hard refresh (Ctrl+Shift+R).
+- The live site has the same risk for about ten minutes after a push (GitHub Pages lets browsers keep files that
+  long). The service worker planned for the home-screen install should load each new version as a whole.
+- Sign-in links only return to addresses allowed in Supabase (Authentication, URL Configuration):
+  `http://localhost:8000/**` and `https://benvog.github.io/Roadmap/**`. Password sign-in does not depend on this.
+- Supabase's built-in email only sends a few sign-in emails an hour. Several tries in a row lock sign-in out for
+  a while ("Too many sign-in emails"); the only fix is to wait.
 
 ## Testing
 - `bash tests/run.sh` (Git Bash) runs the real app in headless Edge against a stand-in store and prints what each
-  scenario saw. It starts and stops its own server and browser, and exits 1 on a problem. Add steps to
+  scenario saw. Read the printed lines, not only the last one: a scenario prints what it found without judging it
+  (the script only fails on errors and on tell-tale text such as `[object`, `undefined`, `NaN` or `Invalid Date`). It starts and stops its own server and browser, and exits 1 on a problem. Add steps to
   `tests/drive.html` for each new slice, and run it before every commit.
 - Headless Edge is `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --headless=new`.
 - Long Bash commands that carry JavaScript or HTML in a heredoc have failed to parse here three times

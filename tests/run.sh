@@ -17,7 +17,7 @@ sleep 1
 "$EDGE" --headless=new --disable-gpu --window-size=500,900 --user-data-dir="$prof" "http://127.0.0.1:$PORT/tests/drive.html?run=$stamp" >/dev/null 2>&1 &
 
 # The page reports each scenario by requesting /__result?...; the requests show up in the server log.
-for t in $(seq 1 120); do sleep 0.5; grep -q "run=$stamp&name=done" "$log" && break; done
+for t in $(seq 1 400); do sleep 0.5; grep -q "run=$stamp&name=done" "$log" && break; done
 out=$(grep -o "__result?run=$stamp&name=[^ ]*" "$log" | PYTHONIOENCODING=utf-8 "$PY" -c "
 import sys, urllib.parse
 for line in sys.stdin:
@@ -33,5 +33,6 @@ sleep 1
 rm -rf "$prof" "$log" 2>/dev/null
 
 if ! echo "$out" | grep -q "== done"; then echo "FAILED: the run did not finish"; exit 1; fi
-if echo "$out" | grep -q "ERROR \|script errors: [^n]\|page overflow: true"; then echo "FAILED: see the lines above"; exit 1; fi
+# Signs of a slip that the scenarios would otherwise print without complaint.
+if echo "$out" | grep -qE 'ERROR |script errors: [^n]|page overflow: true|\[object |undefined|NaN|Invalid Date'; then echo "FAILED: see the lines above"; exit 1; fi
 echo "All scenarios finished with no errors."

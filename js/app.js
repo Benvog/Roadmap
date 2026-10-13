@@ -58,7 +58,7 @@ export function startApp(root, user, store) {
     map.centre();
 
     root.querySelector('#theme').addEventListener('click', toggleTheme);
-    root.querySelector('#account').addEventListener('click', openAccount);
+    root.querySelector('#account').addEventListener('click', () => openAccount());
     root.querySelector('#add-starters').addEventListener('click', addStarters);
     root.querySelector('#strip').addEventListener('click', tapStrip);
   }
@@ -497,14 +497,36 @@ export function startApp(root, user, store) {
     try { localStorage.setItem('theme', html.dataset.theme); } catch (err) { /* the choice just won't be remembered */ }
   }
 
-  function openAccount() {
+  function openAccount(note = '') {
     const el = showSheet(`${sheetHead('Signed in as', user.email)}
-      <div class="actions"><button class="btn" type="button" data-act="sign-out">Sign out</button></div>`);
+      ${note ? `<p class="sheet-note" role="status">${esc(note)}</p>` : ''}
+      <div class="actions">
+        <button class="btn" type="button" data-act="password">Set or change password</button>
+        <button class="btn" type="button" data-act="sign-out">Sign out</button></div>`);
     el.onclick = (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act === 'close') closeSheet();
+      if (act === 'password') openPassword();
       if (act === 'sign-out') store.signOut();
     };
+  }
+
+  // A password is how to sign in on another device; an emailed link only works in the browser that asked for it.
+  function openPassword() {
+    openForm({ kicker: user.email, title: 'Set a password', submit: 'Save password',
+      fields: [{ id: 'password', label: 'New password (8 characters or more)', type: 'password', autocomplete: 'new-password' },
+        { id: 'again', label: 'The same password again', type: 'password', autocomplete: 'new-password' }],
+      onSubmit: async (v) => {
+        if (v.password.length < 8) throw new FormError('Use 8 characters or more.');
+        if (v.password !== v.again) throw new FormError('The two passwords are not the same.');
+        try {
+          await store.setPassword(v.password);
+        } catch (err) {
+          // Supabase explains a refused password (too weak, or the same as the old one); a lost connection has no status.
+          throw err?.status ? new FormError(err.message || 'That password was not accepted. Try a different one.') : err;
+        }
+        openAccount('Password saved. Use it with your email to sign in on any device.');
+      } });
   }
 
   load();

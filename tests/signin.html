@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vektor sign-in test page</title>
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<!--
+  Runs the real sign-in screens with a stand-in store: no email is sent and nobody is signed in.
+  The right password is "correct horse". ?theme=dark or light.
+  window.fakeAuth.limited = true makes every try fail as "too many"; .offline = true makes everything fail.
+-->
+<main id="app"></main>
+<script type="module">
+import { showSignIn } from '../js/signin.js';
+
+const params = new URLSearchParams(location.search);
+if (params.get('theme')) document.documentElement.dataset.theme = params.get('theme');
+const auth = { sent: [], signedInAs: null, limited: false, offline: false };
+const guard = () => {
+  if (auth.offline) throw new Error('offline');
+  if (auth.limited) throw Object.assign(new Error('rate limit'), { status: 429 });
+};
+const store = {
+  async sendSignInLink(email) { guard(); auth.sent.push(email); },
+  async signInWithPassword(email, password) {
+    guard();
+    if (password !== 'correct horse') throw Object.assign(new Error('Invalid login credentials'), { status: 400 });
+    auth.signedInAs = email;
+    document.getElementById('app').innerHTML = '<div class="gate"><div class="card"><h1>Signed in (test)</h1></div></div>';
+  },
+};
+window.fakeAuth = auth;
+showSignIn(document.getElementById('app'), store, { error: params.get('error') || '', email: params.get('email') || '' });
+</script>
+</body>
+</html>

@@ -16,12 +16,23 @@ export function onAuthChange(callback) {
   supabase.auth.onAuthStateChange((event, session) => callback(session?.user ?? null));
 }
 
-// Emails a sign-in link that brings the person back to this page.
+// Emails a sign-in link that brings the person back to this page. It only works in the browser that asked for it.
 export async function sendSignInLink(email) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: location.origin + location.pathname },
   });
+  if (error) throw error;
+}
+
+export async function signInWithPassword(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+}
+
+// Sets or changes the signed-in user's password.
+export async function setPassword(password) {
+  const { error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
 }
 

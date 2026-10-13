@@ -61,7 +61,7 @@ export const SAVE_FAILED = 'That could not be saved. Check your connection and t
 // Throw this from a form's onSubmit to show the person a specific message instead of the general one.
 export class FormError extends Error {}
 
-// A form in the sheet. `fields` are { id, label, type, value, placeholder }, or { id, label, options, value } for a
+// A form in the sheet. `fields` are { id, label, type, value, placeholder, autocomplete }, or { id, label, options, value } for a
 // pick-one list; a first field with id "name" is required.
 // `onSubmit(values)`, each `extras[].run()` and `remove.run()` may be async; a failure shows a message and keeps the form open.
 export function openForm({ kicker, title, fields, submit, onSubmit, extras = [], remove }) {
@@ -72,7 +72,7 @@ export function openForm({ kicker, title, fields, submit, onSubmit, extras = [],
         ? `<select id="f-${f.id}">${f.options.map((o) =>
           `<option value="${esc(o.value)}"${String(o.value) === String(f.value) ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`
         : `<input id="f-${f.id}" type="${f.type || 'text'}" ${f.type === 'number' ? 'inputmode="numeric" min="1" step="1"' : 'maxlength="60"'}
-          value="${esc(f.value)}" placeholder="${esc(f.placeholder)}" autocomplete="off">`}</div>`).join('')}
+          value="${esc(f.value)}" placeholder="${esc(f.placeholder)}" autocomplete="${f.autocomplete || 'off'}">`}</div>`).join('')}
       <p class="error" id="sheet-error" role="alert" hidden></p>
       <div class="actions"><button class="btn primary" type="submit">${esc(submit)}</button>
         ${extras.map((x, n) => `<button class="btn" type="button" data-extra="${n}">${esc(x.label)}</button>`).join('')}</div>
@@ -90,6 +90,8 @@ export function openForm({ kicker, title, fields, submit, onSubmit, extras = [],
       await work();
     } catch (err) {
       buttons.forEach((b) => (b.disabled = false));
+      // The general message hides the cause, so leave the real one in the browser console for whoever looks.
+      if (!(err instanceof FormError)) console.error('Save failed:', err);
       fail(err instanceof FormError ? err.message : SAVE_FAILED);
     }
   };

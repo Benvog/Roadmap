@@ -46,6 +46,7 @@ export function createFakeStore({ areas = [], failing = false } = {}) {
     guard('undoCheckIn');
     db.habit_checkins = db.habit_checkins.filter((c) => !(c.habit_id === habitId && c.day === day));
   };
+  store.setPassword = async (password) => { guard('setPassword'); store.password = password; };
   store.signOut = async () => { store.signedOut = true; };
   store.rows = (table) => db[table];
   return store;

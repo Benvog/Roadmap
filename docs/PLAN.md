@@ -39,6 +39,6 @@ One task at a time: do it, show it, get approval, tick it, commit. See `docs/PRD
 
 ## Phase 5: Ship
 - [ ] PWA: manifest, icon, install to home screen
-- [ ] GitHub repo + Pages deploy
+- [ ] GitHub repo + Pages deploy: live at https://benvog.github.io/Roadmap/ (capital R). Sign-in on the phone failed because the email app opened the link in another browser, so sign-in is now by email and password, with a password set from the account sheet. Passing `tests/run.sh`; a password was set and used on the PC on 2026-10-13. Waiting for a sign-in on the phone
 - [ ] Check every "Done looks like" item in the PRD on phone and PC
 - [ ] Accessibility check (no problems) in light and dark at phone width

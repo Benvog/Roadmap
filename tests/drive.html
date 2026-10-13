@@ -3,9 +3,9 @@
 const f = document.getElementById('f'), run = new URLSearchParams(location.search).get('run');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const report = (name, lines) => fetch('/__result?run=' + run + '&name=' + name + '&log=' + encodeURIComponent(lines.join(' ## ')));
-async function open(query) {
+async function open(query, page = 'app') {
   const loaded = new Promise((r) => f.addEventListener('load', r, { once: true }));
-  f.src = '/tests/app.html' + query;
+  f.src = '/tests/' + page + '.html' + query;
   await loaded;
   const d = f.contentDocument, w = f.contentWindow, errors = [];
   w.addEventListener('error', (e) => errors.push(e.message));
@@ -30,12 +30,12 @@ async function open(query) {
   const entries = () => [...d.querySelectorAll('.entries li')].map((li) => li.querySelector('span').textContent.replace(/\s+/g, ' ').trim() + ' = ' + li.querySelector('b').textContent).join(' ; ');
   const habitRows = () => [...d.querySelectorAll('.habit-list li')].map((li) => (li.querySelector('input').checked ? '[x] ' : '[ ] ') + li.querySelector('label').textContent.replace(/\s+/g, ' ').trim()).join(' ; ');
   const submit = async (ms = 900) => { tap('#sheet-form [type=submit]'); await wait(ms); };
-  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, stops, tasks, progress, strip, habitRows, entries, store: w.fakeStore };
+  return { d, w, errors, q, tap, node, ids, areas, zoom, sheet, find, tapNode, goals, fill, submit, stops, tasks, progress, strip, habitRows, entries, store: w.fakeStore, auth: w.fakeAuth };
 }
-async function scenario(name, query, steps) {
+async function scenario(name, query, steps, page) {
   const log = [];
   try {
-    const t = await open(query);
+    const t = await open(query, page);
     await steps(t, (label, value) => log.push(label + ': ' + value));
     log.push('script errors: ' + (t.errors.join(' | ') || 'none'));
     log.push('page overflow: ' + (t.d.documentElement.scrollWidth > 390));
@@ -231,6 +231,31 @@ async function scenario(name, query, steps) {
     t.tap('[data-act="close"]');
     say('controls clear of the strip', 'zoom bottom ' + Math.round(t.q('.zoom').getBoundingClientRect().bottom) + ' <= strip top ' + Math.round(t.q('#strip').getBoundingClientRect().top));
     say('changes sent', t.store.calls.filter((c) => c !== 'loadAll').join(' ; '));
+  });
+  await scenario('signin', '?theme=light', async (t, say) => {
+    const screen = () => t.q('.card h1').textContent + ' | ' + [...t.d.querySelectorAll('.card button')].map((b) => b.textContent).join(', ');
+    say('first screen', screen() + ' | icon loads: ' + (t.q('.brand img').naturalWidth > 0) + ' | browser can fill it: ' + t.q('#email').autocomplete + ' + ' + t.q('#password').autocomplete);
+    t.fill('email', 'not-an-email'); t.tap('#sign-in [type=submit]'); say('bad email', t.q('#sign-in-error').textContent);
+    t.fill('email', 'me@example.com'); t.tap('#sign-in [type=submit]'); say('no password', t.q('#sign-in-error').textContent);
+    t.fill('password', 'wrong one'); t.tap('#sign-in [type=submit]'); await wait(200);
+    say('wrong password', t.q('#sign-in-error').textContent + ' | button usable again: ' + !t.q('#sign-in [type=submit]').disabled);
+    t.auth.limited = true; t.tap('#sign-in [type=submit]'); await wait(200); say('too many tries', t.q('#sign-in-error').textContent); t.auth.limited = false;
+    t.auth.offline = true; t.tap('#sign-in [type=submit]'); await wait(200); say('no connection', t.q('#sign-in-error').textContent); t.auth.offline = false;
+    t.fill('email', ''); t.tap('#use-link'); say('link with no email', t.q('#sign-in-error').textContent);
+    t.fill('email', 'me@example.com'); t.tap('#use-link'); await wait(200);
+    say('link sent', screen() + ' | to: ' + t.q('.email').textContent + ' | sent: ' + t.auth.sent.join(','));
+    t.tap('#back'); say('back', screen() + ' | kept: ' + t.q('#email').value);
+    t.fill('password', 'correct horse'); t.tap('#sign-in [type=submit]'); await wait(200);
+    say('right password', 'signed in as ' + t.auth.signedInAs + ' | ' + t.q('.card h1').textContent);
+  }, 'signin');
+  await scenario('account', '?theme=light', async (t, say) => {
+    t.tap('#account'); say('account sheet', t.sheet().textContent.replace(/\s+/g, ' ').trim());
+    t.tap('[data-act="password"]'); say('password form', t.sheet().querySelector('h2').textContent + ' | fields: ' + [...t.d.querySelectorAll('#sheet-form input')].map((i) => i.type + '/' + i.autocomplete).join(', '));
+    t.fill('f-password', 'short'); t.fill('f-again', 'short'); t.tap('#sheet-form [type=submit]'); await wait(200); say('too short', t.q('#sheet-error').textContent);
+    t.fill('f-password', 'long enough 1'); t.fill('f-again', 'long enough 2'); t.tap('#sheet-form [type=submit]'); await wait(200); say('not the same', t.q('#sheet-error').textContent);
+    t.store.failing = true; t.fill('f-again', 'long enough 1'); t.tap('#sheet-form [type=submit]'); await wait(200); say('no connection', t.q('#sheet-error').textContent); t.store.failing = false;
+    t.tap('#sheet-form [type=submit]'); await wait(200);
+    say('saved', t.q('.sheet-note').textContent + ' | password sent: ' + (t.store.password === 'long enough 1') + ' | back on: ' + t.sheet().querySelector('h2').textContent);
   });
   await scenario('empty', '?areas=empty', async (t, say) => {
     say('notice', !t.q('#starter').hidden + ' | ' + t.q('#starter p').textContent);
